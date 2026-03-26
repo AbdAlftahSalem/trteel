@@ -1,0 +1,104 @@
+{
+  "reciters": [
+    {
+      "id": "Alafasy_128kbps",
+      "name": "Mishary Rashid Alafasy",
+      "sample": "https://everyayah.com/data/Alafasy_128kbps/001001.mp3"
+    },
+    {
+      "id": "Husary_128kbps",
+      "name": "Mahmoud Khalil Al-Husary",
+      "sample": "https://everyayah.com/data/Husary_128kbps/001001.mp3"
+    },
+    {
+      "id": "Abdul_Basit_Murattal_192kbps",
+      "name": "Abdul Basit Murattal",
+      "sample": "https://everyayah.com/data/Abdul_Basit_Murattal_192kbps/001001.mp3"
+    },
+    {
+      "id": "Abdul_Basit_Mujawwad_128kbps",
+      "name": "Abdul Basit Mujawwad",
+      "sample": "https://everyayah.com/data/Abdul_Basit_Mujawwad_128kbps/001001.mp3"
+    },
+    {
+      "id": "Minshawy_Murattal_128kbps",
+      "name": "Mohamed Siddiq Al-Minshawi Murattal",
+      "sample": "https://everyayah.com/data/Minshawy_Murattal_128kbps/001001.mp3"
+    },
+    {
+      "id": "Minshawy_Mujawwad_192kbps",
+      "name": "Mohamed Siddiq Al-Minshawi Mujawwad",
+      "sample": "https://everyayah.com/data/Minshawy_Mujawwad_192kbps/001001.mp3"
+    },
+    {
+      "id": "MaherAlMuaiqly128kbps",
+      "name": "Maher Al Muaiqly",
+      "sample": "https://everyayah.com/data/MaherAlMuaiqly128kbps/001001.mp3"
+    },
+    {
+      "id": "Saood_ash-Shuraym_128kbps",
+      "name": "Saud Al-Shuraim",
+      "sample": "https://everyayah.com/data/Saood_ash-Shuraym_128kbps/001001.mp3"
+    },
+    {
+      "id": "Abdurrahmaan_As-Sudais_192kbps",
+      "name": "Abdul Rahman Al-Sudais",
+      "sample": "https://everyayah.com/data/Abdurrahmaan_As-Sudais_192kbps/001001.mp3"
+    },
+    {
+      "id": "Muhammad_Jibreel_128kbps",
+      "name": "Muhammad Jibreel",
+      "sample": "https://everyayah.com/data/Muhammad_Jibreel_128kbps/001001.mp3"
+    },
+    {
+      "id": "Muhammad_Ayyoub_128kbps",
+      "name": "Muhammad Ayyoub",
+      "sample": "https://everyayah.com/data/Muhammad_Ayyoub_128kbps/001001.mp3"
+    },
+    {
+      "id": "Hani_Rifai_192kbps",
+      "name": "Hani Al-Rifai",
+      "sample": "https://everyayah.com/data/Hani_Rifai_192kbps/001001.mp3"
+    },
+    {
+      "id": "Nasser_Alqatami_128kbps",
+      "name": "Nasser Al-Qatami",
+      "sample": "https://everyayah.com/data/Nasser_Alqatami_128kbps/001001.mp3"
+    },
+    {
+      "id": "Yasser_Ad-Dussary_128kbps",
+      "name": "Yasser Al-Dossary",
+      "sample": "https://everyayah.com/data/Yasser_Ad-Dussary_128kbps/001001.mp3"
+    },
+    {
+      "id": "Fares_Abbad_64kbps",
+      "name": "Fares Abbad",
+      "sample": "https://everyayah.com/data/Fares_Abbad_64kbps/001001.mp3"
+    },
+    {
+      "id": "Hudhaify_128kbps",
+      "name": "Ali Al-Hudhaify",
+      "sample": "https://everyayah.com/data/Hudhaify_128kbps/001001.mp3"
+    },
+    {
+      "id": "Abu_Bakr_Ash-Shaatree_128kbps",
+      "name": "Abu Bakr Al-Shatri",
+      "sample": "https://everyayah.com/data/Abu_Bakr_Ash-Shaatree_128kbps/001001.mp3"
+    },
+    {
+      "id": "Ahmed_ibn_Ali_al-Ajamy_128kbps_ketaballah.net",
+      "name": "Ahmed Al-Ajmy",
+      "sample": "https://everyayah.com/data/Ahmed_ibn_Ali_al-Ajamy_128kbps_ketaballah.net/001001.mp3"
+    },
+    {
+      "id": "Ibrahim_Akhdar_64kbps",
+      "name": "Ibrahim Al-Akhdar",
+      "sample": "https://everyayah.com/data/Ibrahim_Akhdar_64kbps/001001.mp3"
+    },
+    {
+      "id": "Mustafa_Ismail_48kbps",
+      "name": "Mustafa Ismail",
+      "sample": "https://everyayah.com/data/Mustafa_Ismail_48kbps/001001.mp3"
+    }
+  ]
+}
