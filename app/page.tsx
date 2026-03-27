@@ -2,13 +2,13 @@
 
 import Image from "next/image";
 import { useMemo, useState, useRef, useEffect } from "react";
-import { Play, Pause, SkipForward, SkipBack, ALargeSmall, AudioLines, ChevronDown, Clapperboard, ImagePlus, Layers, Moon, MoveHorizontal, MoveVertical, Palette, UserRound } from "lucide-react";
-import bg1 from "@/assets/images/1.jpg";
-import bg2 from "@/assets/images/2.jpg";
-import bg3 from "@/assets/images/3.jpg";
-import bg4 from "@/assets/images/4.jpg";
-import bg5 from "@/assets/images/5.jpg";
-import bg6 from "@/assets/images/6.jpg";
+import { Play, Pause, SkipForward, SkipBack, ALargeSmall, AudioLines, ChevronDown, Clapperboard, ImagePlus, Layers, Moon, MoveHorizontal, MoveVertical, Palette, UserRound, Download } from "lucide-react";
+import html2canvas from "html2canvas";
+import bg1 from "@/assets/images/1.svg";
+import bg2 from "@/assets/images/2.svg";
+import bg3 from "@/assets/images/3.svg";
+import bg4 from "@/assets/images/4.svg";
+import bg5 from "@/assets/images/5.svg";
 import surahsData from "@/assets/quran_surahs.json";
 import quranDataRaw from "@/assets/quran.json";
 
@@ -83,15 +83,6 @@ const ASPECT_RATIOS: AspectRatio[] = [
   { id: "4/5", label: "طولي (4:5)", desc: "Instagram Social Feed" },
 ];
 
-const BACKGROUNDS = [
-  { id: "1", src: bg1 },
-  { id: "2", src: bg2 },
-  { id: "3", src: bg3 },
-  { id: "4", src: bg4 },
-  { id: "5", src: bg5 },
-  { id: "6", src: bg6 },
-];
-
 export default function Home() {
   const [selectedSurahNumber, setSelectedSurahNumber] = useState<number>(
     surahs[0].number,
@@ -129,6 +120,10 @@ export default function Home() {
   const [currentAyahIndex, setCurrentAyahIndex] = useState<number>(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isExporting, setIsExporting] = useState<boolean>(false);
+  const [exportProgress, setExportProgress] = useState<number>(0);
+  const [bgBlur, setBgBlur] = useState<number>(0);
+  const [bgDim, setBgDim] = useState<number>(0.3);
+  const previewRef = useRef<HTMLDivElement | null>(null);
 
   const selectedSurah = useMemo(
     () =>
@@ -159,7 +154,7 @@ export default function Home() {
     if (isPlaying && selectedAyahs[currentAyahIndex]) {
       const ayah = selectedAyahs[currentAyahIndex];
       const audioUrl = `https://cdn.islamic.network/quran/audio/128/ar.alafasy/${ayah.number}.mp3`;
-      
+
       if (audioRef.current) {
         audioRef.current.src = audioUrl;
         audioRef.current.play().catch(err => console.error("Playback failed", err));
@@ -172,7 +167,9 @@ export default function Home() {
       setCurrentAyahIndex(prev => prev + 1);
     } else {
       setIsPlaying(false);
-      setCurrentAyahIndex(0);
+      if (!isExporting) {
+        setCurrentAyahIndex(0);
+      }
     }
   };
 
@@ -180,12 +177,102 @@ export default function Home() {
     setIsPlaying(prev => !prev);
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
+    if (selectedAyahs.length === 0 || !previewRef.current) return;
+
     setIsExporting(true);
-    setTimeout(() => {
+    setExportProgress(0);
+    setIsPlaying(false);
+    setCurrentAyahIndex(0);
+
+    const chunks: Blob[] = [];
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    const preview = previewRef.current;
+
+    // Get the actual display size of the preview
+    const rect = preview.getBoundingClientRect();
+    canvas.width = rect.width * 2; // Supersample for "Production" quality
+    canvas.height = rect.height * 2;
+
+    const stream = canvas.captureStream(30); // 30 FPS
+
+    // Create audio context to capture audio stream
+    const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const source = audioCtx.createMediaElementSource(audioRef.current!);
+    const destination = audioCtx.createMediaStreamDestination();
+    source.connect(destination);
+    source.connect(audioCtx.destination); // Also play locally while recording
+
+    // Combine video stream with audio stream
+    const combinedStream = new MediaStream([
+      ...stream.getVideoTracks(),
+      ...destination.stream.getAudioTracks()
+    ]);
+
+    const recorder = new MediaRecorder(combinedStream, {
+      mimeType: "video/webm;codecs=vp9,opus",
+      videoBitsPerSecond: 8000000 // 8 Mbps for high quality
+    });
+
+    recorder.ondataavailable = (e) => {
+      if (e.data.size > 0) chunks.push(e.data);
+    };
+
+    recorder.onstop = () => {
+      const blob = new Blob(chunks, { type: "video/webm" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `trteel-quran-${selectedSurah.name.ar}-${Date.now()}.webm`;
+      a.click();
+      URL.revokeObjectURL(url);
       setIsExporting(false);
-      alert("تم تجهيز المقطع! (هذه ميزة تجريبية حالياً)");
-    }, 3000);
+    };
+
+    // Start recording
+    recorder.start();
+    setIsPlaying(true);
+
+    // Rendering loop
+    const totalAyahs = selectedAyahs.length;
+    let lastAyahIndex = -1;
+
+    const captureFrame = async () => {
+      if (!isExporting) return;
+
+      try {
+        const frameCanvas = await html2canvas(preview, {
+          useCORS: true,
+          scale: 2,
+          logging: false,
+          backgroundColor: null
+        });
+
+        if (ctx) {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(frameCanvas, 0, 0);
+        }
+
+        // Update progress based on ayah completion
+        const progress = Math.round(((currentAyahIndex + 1) / totalAyahs) * 100);
+        setExportProgress(progress);
+
+        if (isPlaying) {
+          requestAnimationFrame(captureFrame);
+        } else if (currentAyahIndex === totalAyahs - 1) {
+          // Finished
+          recorder.stop();
+          audioCtx.close();
+        }
+      } catch (err) {
+        console.error("Frame capture failed", err);
+        setIsExporting(false);
+        recorder.stop();
+      }
+    };
+
+    captureFrame();
   };
 
   const maxAyah = selectedSurah.verses_count;
@@ -218,6 +305,7 @@ export default function Home() {
           <div className="pointer-events-none absolute -bottom-16 right-8 h-64 w-64 rounded-full bg-[#d9dbff] blur-3xl" />
 
           <div
+            ref={previewRef}
             className="relative h-full max-h-[min(85vh,720px)] w-auto max-w-full overflow-hidden rounded-[34px] border-[6px] border-[#20252e] shadow-[0_30px_80px_rgba(10,16,28,0.35)] transition-all duration-500 ease-in-out"
             style={{ aspectRatio }}
           >
@@ -227,16 +315,20 @@ export default function Home() {
               fill
               priority
               className={`object-cover transition-transform duration-[10000ms] ease-linear ${isPlaying ? "scale-110" : "scale-100"}`}
+              style={{ filter: `blur(${bgBlur}px)` }}
             />
             {/* Dynamic Dimming Overlay */}
-            <div className={`absolute inset-0 transition-opacity duration-500 ${isPlaying ? "bg-black/20" : "bg-black/40"}`} />
+            <div
+              className={`absolute inset-0 transition-all duration-500`}
+              style={{ backgroundColor: `rgba(0, 0, 0, ${bgDim})` }}
+            />
             <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/60 pointer-events-none" />
 
             {/* Pro Playback Controls Overlay (Relative to entire preview) */}
             <div className="absolute inset-0 z-30 group/player">
               {/* Clickable Area for Play/Pause */}
-              <div 
-                className="absolute inset-0 cursor-pointer pointer-events-auto" 
+              <div
+                className="absolute inset-0 cursor-pointer pointer-events-auto"
                 onClick={togglePlayback}
               />
 
@@ -255,22 +347,22 @@ export default function Home() {
               <div className="absolute bottom-0 left-0 right-0 p-6 pointer-events-none opacity-0 group-hover/player:opacity-100 transition-all duration-500 translate-y-4 group-hover/player:translate-y-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-4 pointer-events-auto">
-                    <button 
+                    <button
                       onClick={(e) => { e.stopPropagation(); currentAyahIndex > 0 && setCurrentAyahIndex(prev => prev - 1); }}
                       disabled={currentAyahIndex === 0}
                       className="h-10 w-10 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-all disabled:opacity-30"
                     >
                       <SkipForward size={20} />
                     </button>
-                    
-                    <button 
+
+                    <button
                       onClick={(e) => { e.stopPropagation(); togglePlayback(); }}
                       className="h-12 w-12 flex items-center justify-center rounded-full bg-white text-[#1677ff] hover:scale-110 transition-all shadow-lg"
                     >
                       {isPlaying ? <Pause fill="currentColor" size={24} /> : <Play fill="currentColor" size={24} className="translate-x-0.5" />}
                     </button>
 
-                    <button 
+                    <button
                       onClick={(e) => { e.stopPropagation(); currentAyahIndex < selectedAyahs.length - 1 && setCurrentAyahIndex(prev => prev + 1); }}
                       disabled={currentAyahIndex === selectedAyahs.length - 1}
                       className="h-10 w-10 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-all disabled:opacity-30"
@@ -287,8 +379,8 @@ export default function Home() {
 
                 {/* Modern Docked Progress Bar */}
                 <div className="relative h-1.5 w-full rounded-full bg-white/20 overflow-hidden group/bar pointer-events-auto cursor-pointer">
-                  <div 
-                    className={`absolute top-0 right-0 h-full bg-[#1677ff] transition-all duration-300 shadow-[0_0_15px_rgba(22,119,255,0.8)]`} 
+                  <div
+                    className={`absolute top-0 right-0 h-full bg-[#1677ff] transition-all duration-300 shadow-[0_0_15px_rgba(22,119,255,0.8)]`}
                     style={{ width: `${((currentAyahIndex + 1) / (selectedAyahs.length || 1)) * 100}%` }}
                   />
                 </div>
@@ -314,7 +406,7 @@ export default function Home() {
                     <p
                       key={ayah.number}
                       className="text-balance font-medium leading-[1.6] transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)]"
-                      style={{ 
+                      style={{
                         fontSize: `${ayahFontSize}px`,
                         color: ayahColor,
                         textShadow: `0 4px 12px ${ayahShadowColor}80`,
@@ -327,8 +419,8 @@ export default function Home() {
                 ))}
               </div>
 
-              <audio 
-                ref={audioRef} 
+              <audio
+                ref={audioRef}
                 onEnded={handleAudioEnded}
                 className="hidden"
               />
@@ -342,7 +434,7 @@ export default function Home() {
               >
                 <h2
                   className="font-bold leading-tight"
-                  style={{ 
+                  style={{
                     fontSize: `${surahFontSize}px`,
                     color: surahColor,
                     textShadow: `0 2px 4px ${surahShadowColor}`
@@ -350,9 +442,9 @@ export default function Home() {
                 >
                   سورة {selectedSurah.name.ar}
                 </h2>
-                <p 
+                <p
                   className="mt-1 text-xs font-medium opacity-80"
-                  style={{ 
+                  style={{
                     color: surahColor,
                     textShadow: `0 1px 2px ${surahShadowColor}`
                   }}
@@ -365,8 +457,8 @@ export default function Home() {
             {showWave && (
               <div
                 className="absolute z-10 flex -translate-x-1/2 items-end justify-center gap-1 transition-all duration-300 ease-out"
-                style={{ 
-                  bottom: `${waveY}%`, 
+                style={{
+                  bottom: `${waveY}%`,
                   left: `${waveX}%`,
                   height: `${waveHeight}px`
                 }}
@@ -375,8 +467,8 @@ export default function Home() {
                   <div
                     key={i}
                     className="w-[3px] rounded-full opacity-80"
-                    style={{ 
-                      height: `${h * 100}%`, 
+                    style={{
+                      height: `${h * 100}%`,
                       backgroundColor: waveColor,
                       boxShadow: `0 0 10px ${waveColor}60`,
                       animation: `wave-bounce 0.8s ease-in-out infinite alternate`,
@@ -390,22 +482,22 @@ export default function Home() {
             {showWatermark && (
               <div
                 className="absolute z-20 transition-all duration-300 ease-out"
-                style={{ 
-                  top: `${watermarkY}%`, 
+                style={{
+                  top: `${watermarkY}%`,
                   right: `${watermarkX}%`,
                   opacity: watermarkOpacity,
                 }}
               >
                 {watermarkMode === "image" && watermarkImage ? (
-                  <img 
-                    src={watermarkImage} 
-                    alt="Watermark" 
+                  <img
+                    src={watermarkImage}
+                    alt="Watermark"
                     style={{ width: `${watermarkSize}px`, height: "auto" }}
                   />
                 ) : watermarkMode === "text" ? (
                   <span
-                    style={{ 
-                      fontSize: `${watermarkSize}px`, 
+                    style={{
+                      fontSize: `${watermarkSize}px`,
                       color: watermarkTextColor,
                       fontWeight: "bold",
                       textShadow: "0 1px 2px rgba(0,0,0,0.5)"
@@ -466,11 +558,10 @@ export default function Home() {
                       key={ratio.id}
                       type="button"
                       onClick={() => setAspectRatio(ratio.id)}
-                      className={`flex flex-col items-center justify-center rounded-xl border p-3 text-center transition-all ${
-                        aspectRatio === ratio.id
-                          ? "border-[#1677ff] bg-[#f0f7ff] text-[#1677ff] shadow-[0_0_0_2px_rgba(22,119,255,0.1)]"
-                          : "border-[#e3e7ef] bg-[#f8f9fc] text-[#5b6373] hover:bg-[#f1f3f9]"
-                      }`}
+                      className={`flex flex-col items-center justify-center rounded-xl border p-3 text-center transition-all ${aspectRatio === ratio.id
+                        ? "border-[#1677ff] bg-[#f0f7ff] text-[#1677ff] shadow-[0_0_0_2px_rgba(22,119,255,0.1)]"
+                        : "border-[#e3e7ef] bg-[#f8f9fc] text-[#5b6373] hover:bg-[#f1f3f9]"
+                        }`}
                     >
                       <span className="text-sm font-bold">{ratio.label}</span>
                       <span className="mt-1 text-[10px] opacity-70">
@@ -486,20 +577,16 @@ export default function Home() {
                   خلفية الفيديو (Background)
                 </label>
                 <div className="grid grid-cols-4 gap-2">
-                  {BACKGROUNDS.map((bg) => (
+                  {[bg1, bg2, bg3, bg4, bg5].map((bg, idx) => (
                     <button
-                      key={bg.id}
-                      type="button"
-                      onClick={() => setBgImage(bg.src)}
-                      className={`relative aspect-square overflow-hidden rounded-xl border-2 transition-all ${
-                        bgImage === bg.src
-                          ? "border-[#1677ff] ring-2 ring-[#1677ff]/20"
-                          : "border-transparent hover:border-[#e3e7ef]"
-                      }`}
+                      key={idx}
+                      onClick={() => setBgImage(bg)}
+                      className={`relative aspect-video flex-shrink-0 cursor-pointer overflow-hidden rounded-xl border-2 transition-all hover:scale-105 active:scale-95 ${bgImage === bg ? "border-[#1677ff] shadow-lg" : "border-transparent"
+                        }`}
                     >
                       <Image
-                        src={bg.src}
-                        alt={`BG ${bg.id}`}
+                        src={bg}
+                        alt={`Background ${idx + 1}`}
                         fill
                         className="object-cover"
                       />
@@ -523,6 +610,45 @@ export default function Home() {
                       }}
                     />
                   </label>
+                </div>
+
+                <div className="mt-5 grid grid-cols-2 gap-4">
+                  <div>
+                    <div className="mb-2 flex items-center justify-between text-xs font-bold text-[#5b6373]">
+                      <div className="flex items-center gap-1.5">
+                        <Moon size={14} className="text-[#1f6feb]" />
+                        <span>تعتيم الخلفية</span>
+                      </div>
+                      <span className="text-[#1f6feb]">{Math.round(bgDim * 100)}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="0.9"
+                      step="0.01"
+                      value={bgDim}
+                      onChange={(e) => setBgDim(Number(e.target.value))}
+                      className="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-[#dde4f0] accent-[#1677ff]"
+                    />
+                  </div>
+                  <div>
+                    <div className="mb-2 flex items-center justify-between text-xs font-bold text-[#5b6373]">
+                      <div className="flex items-center gap-1.5">
+                        <Moon size={14} className="text-[#1f6feb]" />
+                        <span>ضبابية (Blur)</span>
+                      </div>
+                      <span className="text-[#1f6feb]">{bgBlur}px</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="20"
+                      step="1"
+                      value={bgBlur}
+                      onChange={(e) => setBgBlur(Number(e.target.value))}
+                      className="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-[#dde4f0] accent-[#1677ff]"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -698,14 +824,12 @@ export default function Home() {
                   </div>
                   <button
                     onClick={() => setShowSurahName(!showSurahName)}
-                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                      showSurahName ? "bg-[#1677ff]" : "bg-[#dde1ea]"
-                    }`}
+                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${showSurahName ? "bg-[#1677ff]" : "bg-[#dde1ea]"
+                      }`}
                   >
                     <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
-                        showSurahName ? "-translate-x-4" : "translate-x-0"
-                      }`}
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${showSurahName ? "-translate-x-4" : "translate-x-0"
+                        }`}
                     />
                   </button>
                 </div>
@@ -825,14 +949,12 @@ export default function Home() {
                   </div>
                   <button
                     onClick={() => setShowWave(!showWave)}
-                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                      showWave ? "bg-[#1677ff]" : "bg-[#dde1ea]"
-                    }`}
+                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${showWave ? "bg-[#1677ff]" : "bg-[#dde1ea]"
+                      }`}
                   >
                     <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
-                        showWave ? "-translate-x-4" : "translate-x-0"
-                      }`}
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${showWave ? "-translate-x-4" : "translate-x-0"
+                        }`}
                     />
                   </button>
                 </div>
@@ -930,14 +1052,12 @@ export default function Home() {
                   </div>
                   <button
                     onClick={() => setShowWatermark(!showWatermark)}
-                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                      showWatermark ? "bg-[#1677ff]" : "bg-[#dde1ea]"
-                    }`}
+                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${showWatermark ? "bg-[#1677ff]" : "bg-[#dde1ea]"
+                      }`}
                   >
                     <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
-                        showWatermark ? "-translate-x-4" : "translate-x-0"
-                      }`}
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${showWatermark ? "-translate-x-4" : "translate-x-0"
+                        }`}
                     />
                   </button>
                 </div>
@@ -947,21 +1067,19 @@ export default function Home() {
                     <div className="flex rounded-xl bg-[#ebedf2] p-1">
                       <button
                         onClick={() => setWatermarkMode("image")}
-                        className={`flex-1 rounded-lg py-2 text-xs font-bold transition-all ${
-                          watermarkMode === "image" 
-                            ? "bg-white text-[#1677ff] shadow-sm" 
-                            : "text-[#6a7385] hover:text-[#1f2532]"
-                        }`}
+                        className={`flex-1 rounded-lg py-2 text-xs font-bold transition-all ${watermarkMode === "image"
+                          ? "bg-white text-[#1677ff] shadow-sm"
+                          : "text-[#6a7385] hover:text-[#1f2532]"
+                          }`}
                       >
                         صورة
                       </button>
                       <button
                         onClick={() => setWatermarkMode("text")}
-                        className={`flex-1 rounded-lg py-2 text-xs font-bold transition-all ${
-                          watermarkMode === "text" 
-                            ? "bg-white text-[#1677ff] shadow-sm" 
-                            : "text-[#6a7385] hover:text-[#1f2532]"
-                        }`}
+                        className={`flex-1 rounded-lg py-2 text-xs font-bold transition-all ${watermarkMode === "text"
+                          ? "bg-white text-[#1677ff] shadow-sm"
+                          : "text-[#6a7385] hover:text-[#1f2532]"
+                          }`}
                       >
                         نص
                       </button>
@@ -990,7 +1108,7 @@ export default function Home() {
                         ) : (
                           <div className="relative group aspect-video rounded-xl overflow-hidden border border-[#dce6f8] bg-white flex items-center justify-center p-4">
                             <img src={watermarkImage} alt="Watermark Preview" className="max-h-full object-contain" />
-                            <button 
+                            <button
                               onClick={() => setWatermarkImage(null)}
                               className="absolute inset-0 bg-black/40 text-white opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-xs font-bold"
                             >
@@ -1088,7 +1206,7 @@ export default function Home() {
                   </div>
                 )}
               </div>
-
+              
 
             </div>
           </div>
@@ -1101,15 +1219,23 @@ export default function Home() {
               className="group relative flex h-16 w-full items-center justify-center gap-2 overflow-hidden rounded-2xl bg-gradient-to-r from-[#0f73ff] to-[#3489ff] text-xl font-extrabold text-white shadow-[0_14px_32px_rgba(15,115,255,0.35)] transition-all hover:brightness-105 active:scale-[0.98] disabled:opacity-70"
             >
               {isExporting ? (
-                <>
-                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                  <span>جاري معالجة المقطع...</span>
-                </>
+                <div className="flex flex-col items-center">
+                  <div className="flex items-center gap-3">
+                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                    <span>جاري تصدير الفيديو... ({exportProgress}%)</span>
+                  </div>
+                  <div className="mt-2 h-1 w-48 rounded-full bg-white/20">
+                    <div
+                      className="h-full bg-white transition-all duration-300"
+                      style={{ width: `${exportProgress}%` }}
+                    />
+                  </div>
+                </div>
               ) : (
                 <>
                   <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-1000 group-hover:translate-x-full" />
                   <Clapperboard size={22} className="transition-transform group-hover:rotate-12" />
-                  <span>تصدير المقطع المصور</span>
+                  <span>تصدير المقطع </span>
                 </>
               )}
             </button>
