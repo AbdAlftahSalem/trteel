@@ -1,8 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useState } from "react";
-import { ALargeSmall, AudioLines, ChevronDown, Clapperboard, ImagePlus, Layers, Moon, MoveHorizontal, MoveVertical, Palette, UserRound } from "lucide-react";
+import { useMemo, useState, useRef, useEffect } from "react";
+import { Play, Pause, SkipForward, SkipBack, ALargeSmall, AudioLines, ChevronDown, Clapperboard, ImagePlus, Layers, Moon, MoveHorizontal, MoveVertical, Palette, UserRound } from "lucide-react";
 import bg1 from "@/assets/images/1.jpg";
 import bg2 from "@/assets/images/2.jpg";
 import bg3 from "@/assets/images/3.jpg";
@@ -98,20 +98,20 @@ export default function Home() {
   );
   const [fromAyah, setFromAyah] = useState<number>(1);
   const [toAyah, setToAyah] = useState<number>(Math.min(5, surahs[0].verses_count));
-  const [yPosition, setYPosition] = useState<number>(14);
+  const [yPosition, setYPosition] = useState<number>(50);
   const [xPosition, setXPosition] = useState<number>(50);
   const [surahYPosition, setSurahYPosition] = useState<number>(8);
   const [surahXPosition, setSurahXPosition] = useState<number>(50);
-  const [ayahFontSize, setAyahFontSize] = useState<number>(34);
-  const [surahFontSize, setSurahFontSize] = useState<number>(22);
+  const [ayahFontSize, setAyahFontSize] = useState<number>(16);
+  const [surahFontSize, setSurahFontSize] = useState<number>(12);
   const [ayahColor, setAyahColor] = useState<string>("#ffffff");
   const [ayahShadowColor, setAyahShadowColor] = useState<string>("#000000");
   const [surahColor, setSurahColor] = useState<string>("#ffffff");
   const [surahShadowColor, setSurahShadowColor] = useState<string>("#000000");
-  const [waveColor, setWaveColor] = useState<string>("#1677ff");
+  const [waveColor, setWaveColor] = useState<string>("#ffffff");
   const [waveX, setWaveX] = useState<number>(50);
-  const [waveY, setWaveY] = useState<number>(25);
-  const [waveHeight, setWaveHeight] = useState<number>(40);
+  const [waveY, setWaveY] = useState<number>(0);
+  const [waveHeight, setWaveHeight] = useState<number>(25);
   const [showWave, setShowWave] = useState<boolean>(true);
   const [showSurahName, setShowSurahName] = useState<boolean>(true);
   const [aspectRatio, setAspectRatio] = useState<string>("9/16");
@@ -125,6 +125,10 @@ export default function Home() {
   const [watermarkOpacity, setWatermarkOpacity] = useState<number>(0.5);
   const [watermarkX, setWatermarkX] = useState<number>(5);
   const [watermarkY, setWatermarkY] = useState<number>(5);
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
+  const [currentAyahIndex, setCurrentAyahIndex] = useState<number>(0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [isExporting, setIsExporting] = useState<boolean>(false);
 
   const selectedSurah = useMemo(
     () =>
@@ -142,6 +146,47 @@ export default function Home() {
         ayah.numberInSurah >= fromAyah && ayah.numberInSurah <= toAyah,
     );
   }, [selectedSurahNumber, fromAyah, toAyah]);
+
+  useEffect(() => {
+    setCurrentAyahIndex(0);
+    setIsPlaying(false);
+    if (audioRef.current) {
+      audioRef.current.pause();
+    }
+  }, [selectedSurahNumber, fromAyah, toAyah]);
+
+  useEffect(() => {
+    if (isPlaying && selectedAyahs[currentAyahIndex]) {
+      const ayah = selectedAyahs[currentAyahIndex];
+      const audioUrl = `https://cdn.islamic.network/quran/audio/128/ar.alafasy/${ayah.number}.mp3`;
+      
+      if (audioRef.current) {
+        audioRef.current.src = audioUrl;
+        audioRef.current.play().catch(err => console.error("Playback failed", err));
+      }
+    }
+  }, [isPlaying, currentAyahIndex, selectedAyahs]);
+
+  const handleAudioEnded = () => {
+    if (currentAyahIndex < selectedAyahs.length - 1) {
+      setCurrentAyahIndex(prev => prev + 1);
+    } else {
+      setIsPlaying(false);
+      setCurrentAyahIndex(0);
+    }
+  };
+
+  const togglePlayback = () => {
+    setIsPlaying(prev => !prev);
+  };
+
+  const handleExport = () => {
+    setIsExporting(true);
+    setTimeout(() => {
+      setIsExporting(false);
+      alert("تم تجهيز المقطع! (هذه ميزة تجريبية حالياً)");
+    }, 3000);
+  };
 
   const maxAyah = selectedSurah.verses_count;
 
@@ -181,30 +226,112 @@ export default function Home() {
               alt="Quran video preview"
               fill
               priority
-              className="object-cover"
+              className={`object-cover transition-transform duration-[10000ms] ease-linear ${isPlaying ? "scale-110" : "scale-100"}`}
             />
-            <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/35 to-black/70" />
+            {/* Dynamic Dimming Overlay */}
+            <div className={`absolute inset-0 transition-opacity duration-500 ${isPlaying ? "bg-black/20" : "bg-black/40"}`} />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/60 pointer-events-none" />
+
+            {/* Pro Playback Controls Overlay (Relative to entire preview) */}
+            <div className="absolute inset-0 z-30 group/player">
+              {/* Clickable Area for Play/Pause */}
+              <div 
+                className="absolute inset-0 cursor-pointer pointer-events-auto" 
+                onClick={togglePlayback}
+              />
+
+              {/* Center Play/Pause Indicator (Flashes on change) */}
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className={`transition-all duration-300 ${isPlaying ? "opacity-0 scale-150" : "opacity-100 scale-100"}`}>
+                  {!isPlaying && (
+                    <div className="flex h-24 w-24 items-center justify-center rounded-full bg-black/40 backdrop-blur-xl border border-white/20 text-white shadow-2xl">
+                      <Play fill="white" size={48} className="translate-x-1" />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Bottom Control Bar */}
+              <div className="absolute bottom-0 left-0 right-0 p-6 pointer-events-none opacity-0 group-hover/player:opacity-100 transition-all duration-500 translate-y-4 group-hover/player:translate-y-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-4 pointer-events-auto">
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); currentAyahIndex > 0 && setCurrentAyahIndex(prev => prev - 1); }}
+                      disabled={currentAyahIndex === 0}
+                      className="h-10 w-10 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-all disabled:opacity-30"
+                    >
+                      <SkipForward size={20} />
+                    </button>
+                    
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); togglePlayback(); }}
+                      className="h-12 w-12 flex items-center justify-center rounded-full bg-white text-[#1677ff] hover:scale-110 transition-all shadow-lg"
+                    >
+                      {isPlaying ? <Pause fill="currentColor" size={24} /> : <Play fill="currentColor" size={24} className="translate-x-0.5" />}
+                    </button>
+
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); currentAyahIndex < selectedAyahs.length - 1 && setCurrentAyahIndex(prev => prev + 1); }}
+                      disabled={currentAyahIndex === selectedAyahs.length - 1}
+                      className="h-10 w-10 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-all disabled:opacity-30"
+                    >
+                      <SkipBack size={20} />
+                    </button>
+                  </div>
+
+                  <div className="text-right pointer-events-none">
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-[#1677ff] mb-1">الآن يعرض</div>
+                    <div className="text-xs font-bold text-white">آية {selectedAyahs[currentAyahIndex]?.numberInSurah} من {maxAyah}</div>
+                  </div>
+                </div>
+
+                {/* Modern Docked Progress Bar */}
+                <div className="relative h-1.5 w-full rounded-full bg-white/20 overflow-hidden group/bar pointer-events-auto cursor-pointer">
+                  <div 
+                    className={`absolute top-0 right-0 h-full bg-[#1677ff] transition-all duration-300 shadow-[0_0_15px_rgba(22,119,255,0.8)]`} 
+                    style={{ width: `${((currentAyahIndex + 1) / (selectedAyahs.length || 1)) * 100}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Top Info Badge */}
+              <div className="absolute top-6 left-6 pointer-events-none">
+                <div className="flex items-center gap-2 rounded-full bg-black/40 backdrop-blur-md border border-white/10 px-3 py-1.5 text-white">
+                  <div className={`h-2 w-2 rounded-full ${isPlaying ? "bg-red-500 animate-pulse" : "bg-white/40"}`} />
+                  <span className="text-[10px] font-bold tracking-tight uppercase">Preview Studio</span>
+                </div>
+              </div>
+            </div>
 
             <div
               className="absolute z-10 flex w-[85%] -translate-x-1/2 flex-col items-center justify-center text-center text-white transition-all duration-300 ease-out"
               style={{ bottom: `${yPosition}%`, left: `${xPosition}%` }}
               dir="rtl"
             >
-              <div className="max-h-[70%] w-full space-y-4 overflow-y-auto px-4 custom-scrollbar">
-                {selectedAyahs.map((ayah) => (
-                  <p
-                    key={ayah.number}
-                    className="text-balance font-medium leading-relaxed"
-                    style={{ 
-                      fontSize: `${ayahFontSize}px`,
-                      color: ayahColor,
-                      textShadow: `0 2px 8px ${ayahShadowColor}`
-                    }}
-                  >
-                    {ayah.text}
-                  </p>
+              <div className="max-h-[80%] w-full px-6 text-center">
+                {selectedAyahs.map((ayah, index) => (
+                  index === currentAyahIndex && (
+                    <p
+                      key={ayah.number}
+                      className="text-balance font-medium leading-[1.6] transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)]"
+                      style={{ 
+                        fontSize: `${ayahFontSize}px`,
+                        color: ayahColor,
+                        textShadow: `0 4px 12px ${ayahShadowColor}80`,
+                        animation: "fade-slide-up 0.8s forwards"
+                      }}
+                    >
+                      {ayah.text}
+                    </p>
+                  )
                 ))}
               </div>
+
+              <audio 
+                ref={audioRef} 
+                onEnded={handleAudioEnded}
+                className="hidden"
+              />
             </div>
 
             {showSurahName && (
@@ -962,52 +1089,29 @@ export default function Home() {
                 )}
               </div>
 
-              <p className="text-sm font-semibold text-[#6a7385]">
-                عدد آيات السورة: {maxAyah}
-              </p>
 
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setFromAyah(1);
-                    setToAyah(Math.min(5, maxAyah));
-                  }}
-                  className="rounded-full border border-[#d7e4ff] bg-[#eef4ff] px-4 py-2 text-sm font-bold text-[#2463d8] transition hover:bg-[#e3eeff]"
-                >
-                  أول 5 آيات
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setFromAyah(1);
-                    setToAyah(Math.min(10, maxAyah));
-                  }}
-                  className="rounded-full border border-[#d7e4ff] bg-[#eef4ff] px-4 py-2 text-sm font-bold text-[#2463d8] transition hover:bg-[#e3eeff]"
-                >
-                  أول 10 آيات
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setFromAyah(1);
-                    setToAyah(maxAyah);
-                  }}
-                  className="rounded-full border border-[#d7e4ff] bg-[#eef4ff] px-4 py-2 text-sm font-bold text-[#2463d8] transition hover:bg-[#e3eeff]"
-                >
-                  السورة كاملة
-                </button>
-              </div>
             </div>
           </div>
 
           <footer className="border-t border-[#eceff4] p-5">
             <button
               type="button"
-              className="flex h-16 w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#0f73ff] to-[#3489ff] text-xl font-extrabold text-white shadow-[0_14px_32px_rgba(15,115,255,0.35)] transition hover:brightness-105"
+              onClick={handleExport}
+              disabled={isExporting}
+              className="group relative flex h-16 w-full items-center justify-center gap-2 overflow-hidden rounded-2xl bg-gradient-to-r from-[#0f73ff] to-[#3489ff] text-xl font-extrabold text-white shadow-[0_14px_32px_rgba(15,115,255,0.35)] transition-all hover:brightness-105 active:scale-[0.98] disabled:opacity-70"
             >
-              <Clapperboard size={22} />
-              تصدير المقطع
+              {isExporting ? (
+                <>
+                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                  <span>جاري معالجة المقطع...</span>
+                </>
+              ) : (
+                <>
+                  <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-1000 group-hover:translate-x-full" />
+                  <Clapperboard size={22} className="transition-transform group-hover:rotate-12" />
+                  <span>تصدير المقطع المصور</span>
+                </>
+              )}
             </button>
           </footer>
         </aside>
