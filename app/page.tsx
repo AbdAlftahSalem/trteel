@@ -386,7 +386,7 @@ export default function Home() {
       const totalAyahs = selectedAyahs.length;
       for (let i = 0; i < totalAyahs; i++) {
         const ayah = selectedAyahs[i];
-        setCurrentAyahIndex(i);
+        // setCurrentAyahIndex(i); // Stay on current view during export
 
         const audioUrl = `/audio-proxy/ar.alafasy/${ayah.number}.mp3`;
         let audioBuffer: AudioBuffer | null = null;
@@ -412,7 +412,7 @@ export default function Home() {
           const src = audioCtx.createBufferSource();
           src.buffer = audioBuffer;
           src.connect(exportGain);
-          src.connect(audioCtx.destination);
+          // Silent export - no connection to audioCtx.destination
           src.start();
           
           const startT = audioCtx.currentTime;
