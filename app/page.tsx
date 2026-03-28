@@ -152,8 +152,7 @@ export default function Home() {
   useEffect(() => {
     if (isPlaying && selectedAyahs[currentAyahIndex]) {
       const ayah = selectedAyahs[currentAyahIndex];
-      const audioUrl = `https://cdn.islamic.network/quran/audio/128/ar.alafasy/${ayah.number}.mp3`;
-
+      const audioUrl = `/audio-proxy/ar.alafasy/${ayah.number}.mp3`;
       if (audioRef.current) {
         audioRef.current.src = audioUrl;
         audioRef.current.play().catch(err => console.error("Playback failed", err));
@@ -218,14 +217,15 @@ export default function Home() {
       if (audioCtx.state === "suspended") await audioCtx.resume();
       
       const audioDest = audioCtx.createMediaStreamDestination();
-      
-      // Keep audio track alive with silent oscillator
-      const osc = audioCtx.createOscillator();
-      const silent = audioCtx.createGain();
-      silent.gain.value = 0;
-      osc.connect(silent);
-      silent.connect(audioDest);
-      osc.start();
+      const exportGain = audioCtx.createGain();
+      exportGain.gain.value = 1.0;
+      exportGain.connect(audioDest);
+
+      // Keep audio track alive with a tiny constant signal
+      const silent = audioCtx.createConstantSource();
+      silent.offset.value = 0.0001; 
+      silent.connect(exportGain);
+      silent.start();
       
       // Draw initial frame
       ctx.fillStyle = "#000";
@@ -249,7 +249,8 @@ export default function Home() {
       const chunks: Blob[] = [];
       const recorder = new MediaRecorder(combined, {
         mimeType,
-        videoBitsPerSecond: 2_500_000, 
+        videoBitsPerSecond: 2_500_000,
+        audioBitsPerSecond: 128_000,
       });
 
       recorder.ondataavailable = (e) => {
@@ -380,14 +381,14 @@ export default function Home() {
 
       // Draw initial frame before starting
       drawFrame(selectedAyahs[0].text, 0);
-      recorder.start(1000); // Larger timeslice to reduce overhead
+      recorder.start(1000); 
 
       const totalAyahs = selectedAyahs.length;
       for (let i = 0; i < totalAyahs; i++) {
         const ayah = selectedAyahs[i];
         setCurrentAyahIndex(i);
 
-        const audioUrl = `https://cdn.islamic.network/quran/audio/128/ar.alafasy/${ayah.number}.mp3`;
+        const audioUrl = `/audio-proxy/ar.alafasy/${ayah.number}.mp3`;
         let audioBuffer: AudioBuffer | null = null;
         try {
           const resp = await fetch(audioUrl);
@@ -410,7 +411,7 @@ export default function Home() {
         if (audioBuffer) {
           const src = audioCtx.createBufferSource();
           src.buffer = audioBuffer;
-          src.connect(audioDest);
+          src.connect(exportGain);
           src.connect(audioCtx.destination);
           src.start();
           
@@ -449,8 +450,8 @@ export default function Home() {
 
       setExportProgress(100);
       
-      // Stop heartbeat
-      osc.stop();
+      // Stop constant signal
+      silent.stop();
       
       // Wait for a few more frames to ensure everything is captured
       await new Promise(r => setTimeout(r, 1000));
