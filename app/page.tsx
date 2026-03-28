@@ -174,10 +174,12 @@ export default function Home() {
       const a = String(ayah.numberInSurah).padStart(3, "0");
       const audioUrl = `/audio-proxy/${selectedReciterId}/${s}${a}.mp3`;
 
-      if (audioRef.current) {
+      if (audioRef.current && audioRef.current.src !== window.location.origin + audioUrl) {
         audioRef.current.src = audioUrl;
-        audioRef.current.play().catch(err => console.error("Playback failed", err));
       }
+      audioRef.current?.play().catch(err => console.error("Playback failed", err));
+    } else if (!isPlaying && audioRef.current) {
+      audioRef.current.pause();
     }
   }, [isPlaying, currentAyahIndex, selectedAyahs, selectedReciterId]);
 
