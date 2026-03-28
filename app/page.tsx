@@ -347,17 +347,28 @@ export default function Home() {
 
         if (showWave) {
           const bW = Math.max(4, CW * 0.005);
-          const gap = bW * 1.5;
+          const gap = bW * 1.8; // Match UI gap more closely
           const totalWW = waveRelH.length * (bW + gap);
           const wbx = (waveX / 100) * CW - totalWW / 2;
           const wby = CH - (waveY / 100) * CH;
           ctx.save();
           waveRelH.forEach((rh, idx) => {
-            const ph = (phase + idx * 0.5) % (Math.PI * 2);
-            const bH = rh * waveHeight * SC * (0.6 + 0.4 * Math.sin(ph));
+            // Synchronized with CSS 0.8s infinite alternate animation
+            const ph = (phase + idx * 0.35) % (Math.PI * 2);
+            const bH = rh * waveHeight * SC * (0.55 + 0.45 * Math.sin(ph));
             ctx.fillStyle = waveColor;
-            ctx.shadowColor = waveColor; ctx.shadowBlur = 8 * SC;
-            ctx.fillRect(wbx + idx * (gap), wby - bH, bW, bH);
+            ctx.shadowColor = waveColor;
+            ctx.shadowBlur = 10 * SC;
+            ctx.globalAlpha = 0.85;
+            
+            // Draw with rounded ends to match UI
+            ctx.beginPath();
+            if ((ctx as any).roundRect) {
+              (ctx as any).roundRect(wbx + idx * gap, wby - bH, bW, bH, bW / 2);
+            } else {
+              ctx.rect(wbx + idx * gap, wby - bH, bW, bH); // Fallback
+            }
+            ctx.fill();
           });
           ctx.restore();
         }
@@ -405,7 +416,7 @@ export default function Home() {
 
         const frameInterval = setInterval(() => {
           drawFrame(ayah.text, phase);
-          phase += 0.2;
+          phase += 0.25;
         }, 33);
 
         if (audioBuffer) {
