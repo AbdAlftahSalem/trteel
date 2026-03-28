@@ -120,6 +120,7 @@ export default function Home() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [exportProgress, setExportProgress] = useState<number>(0);
+  const [activeAccordion, setActiveAccordion] = useState<string>("dimensions");
   const [bgBlur, setBgBlur] = useState<number>(0);
   const [bgDim, setBgDim] = useState<number>(0.3);
   const previewRef = useRef<HTMLDivElement | null>(null);
@@ -762,9 +763,7 @@ return (
 
           <div className="text-right">
             <p className="text-lg font-extrabold text-[#1677ff]">ترتيل</p>
-            <p className="text-xs font-semibold text-[#8a93a5]">
-              Quran Video Studio
-            </p>
+            <p className="text-xs font-semibold text-[#8a93a5]">Quran Video Studio</p>
           </div>
         </header>
 
@@ -774,667 +773,364 @@ return (
             تحكّم في أبعاد المقطع وموقع النصوص والآيات المختارة
           </p>
 
-          <div className="mt-7 space-y-5">
-            <div>
-              <label className="mb-2 block text-sm font-bold text-[#5b6373]">
-                أبعاد الفيديو (Aspect Ratio)
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                {ASPECT_RATIOS.map((ratio: AspectRatio) => (
-                  <button
-                    key={ratio.id}
-                    type="button"
-                    onClick={() => setAspectRatio(ratio.id)}
-                    className={`flex flex-col items-center justify-center rounded-xl border p-3 text-center transition-all ${aspectRatio === ratio.id
-                      ? "border-[#1677ff] bg-[#f0f7ff] text-[#1677ff] shadow-[0_0_0_2px_rgba(22,119,255,0.1)]"
-                      : "border-[#e3e7ef] bg-[#f8f9fc] text-[#5b6373] hover:bg-[#f1f3f9]"
-                      }`}
-                  >
-                    <span className="text-sm font-bold">{ratio.label}</span>
-                    <span className="mt-1 text-[10px] opacity-70">
-                      {ratio.desc}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label className="mb-3 block text-sm font-bold text-[#5b6373]">
-                خلفية الفيديو (Background)
-              </label>
-              <div className="grid grid-cols-4 gap-2">
-                {[bg1, bg2, bg3, bg4, bg5].map((bg, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setBgImage(bg)}
-                    className={`relative aspect-video flex-shrink-0 cursor-pointer overflow-hidden rounded-xl border-2 transition-all hover:scale-105 active:scale-95 ${bgImage === bg ? "border-[#1677ff] shadow-lg" : "border-transparent"
-                      }`}
-                  >
-                    <Image
-                      src={bg}
-                      alt={`Background ${idx + 1}`}
-                      fill
-                      className="object-cover"
-                    />
-                  </button>
-                ))}
-                <label className="flex aspect-square cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-[#dce6f8] bg-[#f8f9fc] hover:bg-[#eef4ff] transition-all">
-                  <ImagePlus size={20} className="text-[#1f6feb]" />
-                  <span className="mt-1 text-[10px] font-bold text-[#1f6feb]">رفع</span>
-                  <input
-                    type="file"
-                    hidden
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        const reader = new FileReader();
-                        reader.onload = (event) =>
-                          setBgImage(event.target?.result as string);
-                        reader.readAsDataURL(file);
-                      }
-                    }}
-                  />
-                </label>
-              </div>
-
-              <div className="mt-5 grid grid-cols-2 gap-4">
-                <div>
-                  <div className="mb-2 flex items-center justify-between text-xs font-bold text-[#5b6373]">
-                    <div className="flex items-center gap-1.5">
-                      <Moon size={14} className="text-[#1f6feb]" />
-                      <span>تعتيم الخلفية</span>
-                    </div>
-                    <span className="text-[#1f6feb]">{Math.round(bgDim * 100)}%</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="0.9"
-                    step="0.01"
-                    value={bgDim}
-                    onChange={(e) => setBgDim(Number(e.target.value))}
-                    className="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-[#dde4f0] accent-[#1677ff]"
-                  />
-                </div>
-                <div>
-                  <div className="mb-2 flex items-center justify-between text-xs font-bold text-[#5b6373]">
-                    <div className="flex items-center gap-1.5">
-                      <Moon size={14} className="text-[#1f6feb]" />
-                      <span>ضبابية (Blur)</span>
-                    </div>
-                    <span className="text-[#1f6feb]">{bgBlur}px</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="20"
-                    step="1"
-                    value={bgBlur}
-                    onChange={(e) => setBgBlur(Number(e.target.value))}
-                    className="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-[#dde4f0] accent-[#1677ff]"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <label
-                htmlFor="surahSelect"
-                className="mb-2 block text-sm font-bold text-[#5b6373]"
+          <div className="mt-7 space-y-3 pb-20">
+            {/* --- Dimensions --- */}
+            <div className={`overflow-hidden rounded-2xl border transition-all duration-300 ${activeAccordion === "dimensions" ? "border-[#1677ff] bg-white shadow-sm" : "border-[#e3e7ef] bg-[#f8f9fc]"}`}>
+              <button
+                onClick={() => setActiveAccordion(activeAccordion === "dimensions" ? "" : "dimensions")}
+                className="flex w-full items-center justify-between px-5 py-4 text-right"
               >
-                السورة
-              </label>
-              <div className="relative">
-                <select
-                  id="surahSelect"
-                  value={selectedSurahNumber}
-                  onChange={(event) =>
-                    handleSurahChange(Number(event.target.value))
-                  }
-                  className="h-14 w-full appearance-none rounded-2xl border border-[#e3e7ef] bg-[#f8f9fc] px-4 text-base font-bold text-[#1f2532] outline-none transition focus:border-[#2f7dff] focus:bg-white focus:ring-4 focus:ring-[#2f7dff]/15"
-                >
-                  {surahs.map((surah) => (
-                    <option key={surah.number} value={surah.number}>
-                      {surah.number}. {surah.name.ar} - {surah.name.transliteration}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#6e7786]" />
+                <div className="flex items-center gap-3">
+                  <div className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${activeAccordion === "dimensions" ? "bg-[#1677ff] text-white" : "bg-[#ebedf2] text-[#5b6373]"}`}>
+                    <Layers size={16} />
+                  </div>
+                  <span className={`text-sm font-bold ${activeAccordion === "dimensions" ? "text-[#1677ff]" : "text-[#1f2532]"}`}>أبعاد المقطع</span>
+                </div>
+                <ChevronDown size={18} className={`text-[#8a93a5] transition-transform duration-300 ${activeAccordion === "dimensions" ? "rotate-180" : ""}`} />
+              </button>
+              
+              <div className={`grid transition-all duration-300 ease-in-out ${activeAccordion === "dimensions" ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}>
+                <div className="overflow-hidden">
+                  <div className="px-5 pb-5 pt-1">
+                    <div className="grid grid-cols-2 gap-2">
+                      {ASPECT_RATIOS.map((ratio: AspectRatio) => (
+                        <button
+                          key={ratio.id}
+                          type="button"
+                          onClick={() => setAspectRatio(ratio.id)}
+                          className={`flex flex-col items-center justify-center rounded-xl border p-3 text-center transition-all ${aspectRatio === ratio.id
+                            ? "border-[#1677ff] bg-[#f0f7ff] text-[#1677ff] shadow-[0_0_0_2px_rgba(22,119,255,0.1)]"
+                            : "border-[#e3e7ef] bg-white text-[#5b6373] hover:bg-[#f1f3f9]"
+                          }`}
+                        >
+                          <span className="text-xs font-bold">{ratio.label}</span>
+                          <span className="mt-1 text-[9px] opacity-70 leading-tight">{ratio.desc}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <label
-                htmlFor="fromAyah"
-                className="rounded-2xl border border-[#e3e7ef] bg-[#f8f9fc] px-4 py-3"
+            {/* --- Selection --- */}
+            <div className={`overflow-hidden rounded-2xl border transition-all duration-300 ${activeAccordion === "selection" ? "border-[#1677ff] bg-white shadow-sm" : "border-[#e3e7ef] bg-[#f8f9fc]"}`}>
+              <button
+                onClick={() => setActiveAccordion(activeAccordion === "selection" ? "" : "selection")}
+                className="flex w-full items-center justify-between px-5 py-4 text-right"
               >
-                <span className="text-xs font-bold text-[#81899a]">من آية</span>
-                <input
-                  id="fromAyah"
-                  type="number"
-                  min={1}
-                  max={maxAyah}
-                  value={fromAyah}
-                  onChange={(event) => handleFromAyahChange(event.target.value)}
-                  onBlur={(event) => handleFromAyahChange(event.target.value)}
-                  className="mt-2 block w-full border-0 bg-transparent text-2xl font-extrabold text-[#1f2532] outline-none"
-                />
-              </label>
+                <div className="flex items-center gap-3">
+                  <div className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${activeAccordion === "selection" ? "bg-[#1677ff] text-white" : "bg-[#ebedf2] text-[#5b6373]"}`}>
+                    <ALargeSmall size={16} />
+                  </div>
+                  <span className={`text-sm font-bold ${activeAccordion === "selection" ? "text-[#1677ff]" : "text-[#1f2532]"}`}>اختيار النص والآيات</span>
+                </div>
+                <ChevronDown size={18} className={`text-[#8a93a5] transition-transform duration-300 ${activeAccordion === "selection" ? "rotate-180" : ""}`} />
+              </button>
 
-              <label
-                htmlFor="toAyah"
-                className="rounded-2xl border border-[#e3e7ef] bg-[#f8f9fc] px-4 py-3"
+              <div className={`grid transition-all duration-300 ease-in-out ${activeAccordion === "selection" ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}>
+                <div className="overflow-hidden">
+                  <div className="space-y-4 px-5 pb-5 pt-1">
+                    <div>
+                      <label htmlFor="surahSelect" className="mb-2 block text-[11px] font-bold text-[#81899a]">السورة</label>
+                      <div className="relative">
+                        <select
+                          id="surahSelect"
+                          value={selectedSurahNumber}
+                          onChange={(event) => handleSurahChange(Number(event.target.value))}
+                          className="h-12 w-full appearance-none rounded-xl border border-[#e3e7ef] bg-white px-4 text-sm font-bold text-[#1f2532] outline-none transition focus:border-[#2f7dff]"
+                        >
+                          {surahs.map((surah) => (
+                            <option key={surah.number} value={surah.number}>
+                              {surah.number}. {surah.name.ar}
+                            </option>
+                          ))}
+                        </select>
+                        <ChevronDown className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#6e7786]" size={16} />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <label className="rounded-xl border border-[#e3e7ef] bg-white px-3 py-2">
+                        <span className="text-[10px] font-bold text-[#81899a]">من آية</span>
+                        <input
+                          type="number"
+                          min={1}
+                          max={maxAyah}
+                          value={fromAyah}
+                          onChange={(e) => handleFromAyahChange(e.target.value)}
+                          className="mt-1 block w-full border-0 bg-transparent text-lg font-extrabold text-[#1f2532] outline-none"
+                        />
+                      </label>
+                      <label className="rounded-xl border border-[#e3e7ef] bg-white px-3 py-2">
+                        <span className="text-[10px] font-bold text-[#81899a]">إلى آية</span>
+                        <input
+                          type="number"
+                          min={fromAyah}
+                          max={maxAyah}
+                          value={toAyah}
+                          onChange={(e) => handleToAyahChange(e.target.value)}
+                          className="mt-1 block w-full border-0 bg-transparent text-lg font-extrabold text-[#1f2532] outline-none"
+                        />
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* --- Background --- */}
+            <div className={`overflow-hidden rounded-2xl border transition-all duration-300 ${activeAccordion === "background" ? "border-[#1677ff] bg-white shadow-sm" : "border-[#e3e7ef] bg-[#f8f9fc]"}`}>
+              <button
+                onClick={() => setActiveAccordion(activeAccordion === "background" ? "" : "background")}
+                className="flex w-full items-center justify-between px-5 py-4 text-right"
               >
-                <span className="text-xs font-bold text-[#81899a]">إلى آية</span>
-                <input
-                  id="toAyah"
-                  type="number"
-                  min={fromAyah}
-                  max={maxAyah}
-                  value={toAyah}
-                  onChange={(event) => handleToAyahChange(event.target.value)}
-                  onBlur={(event) => handleToAyahChange(event.target.value)}
-                  className="mt-2 block w-full border-0 bg-transparent text-2xl font-extrabold text-[#1f2532] outline-none"
-                />
-              </label>
-            </div>
-
-            <div>
-              <div className="mb-3 flex items-center justify-between">
-                <div className="flex items-center gap-2 text-sm font-bold text-[#5b6373]">
-                  <MoveVertical size={16} className="text-[#1f6feb]" />
-                  <span>موضع النص (عمودياً)</span>
-                </div>
-                <span className="text-sm font-semibold text-[#1f6feb] transition-all">
-                  {yPosition}%
-                </span>
-              </div>
-              <div className="relative flex h-14 w-full items-center rounded-2xl border border-[#e3e7ef] bg-[#f8f9fc] px-4">
-                <input
-                  type="range"
-                  min="5"
-                  max="85"
-                  step="1"
-                  value={yPosition}
-                  onChange={(e) => setYPosition(Number(e.target.value))}
-                  className="h-2 w-full cursor-pointer appearance-none rounded-lg bg-[#dde4f0] accent-[#1677ff]"
-                />
-              </div>
-            </div>
-
-            <div>
-              <div className="mb-3 flex items-center justify-between">
-                <div className="flex items-center gap-2 text-sm font-bold text-[#5b6373]">
-                  <MoveHorizontal size={16} className="text-[#1f6feb]" />
-                  <span>موضع النص (أفقياً)</span>
-                </div>
-                <span className="text-sm font-semibold text-[#1f6feb] transition-all">
-                  {xPosition}%
-                </span>
-              </div>
-              <div className="relative flex h-14 w-full items-center rounded-2xl border border-[#e3e7ef] bg-[#f8f9fc] px-4">
-                <input
-                  type="range"
-                  min="10"
-                  max="90"
-                  step="1"
-                  value={xPosition}
-                  onChange={(e) => setXPosition(Number(e.target.value))}
-                  className="h-2 w-full cursor-pointer appearance-none rounded-lg bg-[#dde4f0] accent-[#1677ff]"
-                />
-              </div>
-            </div>
-
-            <div>
-              <div className="mb-3 flex items-center justify-between">
-                <div className="flex items-center gap-2 text-sm font-bold text-[#5b6373]">
-                  <ALargeSmall size={16} className="text-[#1f6feb]" />
-                  <span>حجم خط الآيات</span>
-                </div>
-                <span className="text-sm font-semibold text-[#1f6feb] transition-all">
-                  {ayahFontSize}px
-                </span>
-              </div>
-              <div className="relative flex h-14 w-full items-center rounded-2xl border border-[#e3e7ef] bg-[#f8f9fc] px-4">
-                <input
-                  type="range"
-                  min="16"
-                  max="80"
-                  step="1"
-                  value={ayahFontSize}
-                  onChange={(e) => setAyahFontSize(Number(e.target.value))}
-                  className="h-2 w-full cursor-pointer appearance-none rounded-lg bg-[#dde4f0] accent-[#1677ff]"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <div className="mb-2 flex items-center gap-2 text-xs font-bold text-[#5b6373]">
-                  <Palette size={14} className="text-[#1f6feb]" />
-                  <span>لون الآيات</span>
-                </div>
-                <div className="flex h-12 items-center gap-3 rounded-xl border border-[#e3e7ef] bg-[#f8f9fc] px-3">
-                  <input
-                    type="color"
-                    value={ayahColor}
-                    onChange={(e) => setAyahColor(e.target.value)}
-                    className="h-6 w-6 cursor-pointer border-0 bg-transparent"
-                  />
-                  <span className="text-xs font-mono font-bold uppercase text-[#1f2532]">{ayahColor}</span>
-                </div>
-              </div>
-              <div>
-                <div className="mb-2 flex items-center gap-2 text-xs font-bold text-[#5b6373]">
-                  <Layers size={14} className="text-[#1f6feb]" />
-                  <span>ظل الآيات</span>
-                </div>
-                <div className="flex h-12 items-center gap-3 rounded-xl border border-[#e3e7ef] bg-[#f8f9fc] px-3">
-                  <input
-                    type="color"
-                    value={ayahShadowColor}
-                    onChange={(e) => setAyahShadowColor(e.target.value)}
-                    className="h-6 w-6 cursor-pointer border-0 bg-transparent"
-                  />
-                  <span className="text-xs font-mono font-bold uppercase text-[#1f2532]">{ayahShadowColor}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-4 border-t border-[#eceff4] pt-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-sm font-bold text-[#1f2532]">
-                  <Layers size={18} className="text-[#1677ff]" />
-                  <span>إظهار اسم السورة</span>
-                </div>
-                <button
-                  onClick={() => setShowSurahName(!showSurahName)}
-                  className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${showSurahName ? "bg-[#1677ff]" : "bg-[#dde1ea]"
-                    }`}
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${showSurahName ? "-translate-x-4" : "translate-x-0"
-                      }`}
-                  />
-                </button>
-              </div>
-
-              {showSurahName && (
-                <>
-                  <div className="mt-4">
-                    <div className="mb-3 flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-sm font-bold text-[#5b6373]">
-                        <MoveVertical size={16} className="text-[#1f6feb]" />
-                        <span>موقع السورة (عمودياً)</span>
-                      </div>
-                      <span className="text-sm font-semibold text-[#1f6feb] transition-all">
-                        {surahYPosition}%
-                      </span>
-                    </div>
-                    <div className="relative flex h-14 w-full items-center rounded-2xl border border-[#e3e7ef] bg-[#f8f9fc] px-4">
-                      <input
-                        type="range"
-                        min="2"
-                        max="95"
-                        step="1"
-                        value={surahYPosition}
-                        onChange={(e) => setSurahYPosition(Number(e.target.value))}
-                        className="h-2 w-full cursor-pointer appearance-none rounded-lg bg-[#dde4f0] accent-[#1677ff]"
-                      />
-                    </div>
+                <div className="flex items-center gap-3">
+                  <div className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${activeAccordion === "background" ? "bg-[#1677ff] text-white" : "bg-[#ebedf2] text-[#5b6373]"}`}>
+                    <ImagePlus size={16} />
                   </div>
-
-                  <div>
-                    <div className="mb-3 flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-sm font-bold text-[#5b6373]">
-                        <MoveHorizontal size={16} className="text-[#1f6feb]" />
-                        <span>موقع السورة (أفقياً)</span>
-                      </div>
-                      <span className="text-sm font-semibold text-[#1f6feb] transition-all">
-                        {surahXPosition}%
-                      </span>
-                    </div>
-                    <div className="relative flex h-14 w-full items-center rounded-2xl border border-[#e3e7ef] bg-[#f8f9fc] px-4">
-                      <input
-                        type="range"
-                        min="5"
-                        max="95"
-                        step="1"
-                        value={surahXPosition}
-                        onChange={(e) => setSurahXPosition(Number(e.target.value))}
-                        className="h-2 w-full cursor-pointer appearance-none rounded-lg bg-[#dde4f0] accent-[#1677ff]"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="mb-3 flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-sm font-bold text-[#5b6373]">
-                        <ALargeSmall size={16} className="text-[#1f6feb]" />
-                        <span>حجم خط السورة</span>
-                      </div>
-                      <span className="text-sm font-semibold text-[#1f6feb] transition-all">
-                        {surahFontSize}px
-                      </span>
-                    </div>
-                    <div className="relative flex h-14 w-full items-center rounded-2xl border border-[#e3e7ef] bg-[#f8f9fc] px-4">
-                      <input
-                        type="range"
-                        min="12"
-                        max="60"
-                        step="1"
-                        value={surahFontSize}
-                        onChange={(e) => setSurahFontSize(Number(e.target.value))}
-                        className="h-2 w-full cursor-pointer appearance-none rounded-lg bg-[#dde4f0] accent-[#1677ff]"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3 pb-2">
-                    <div>
-                      <div className="mb-2 flex items-center gap-2 text-xs font-bold text-[#5b6373]">
-                        <Palette size={14} className="text-[#1f6feb]" />
-                        <span>لون السورة</span>
-                      </div>
-                      <div className="flex h-12 items-center gap-3 rounded-xl border border-[#e3e7ef] bg-[#f8f9fc] px-3">
-                        <input
-                          type="color"
-                          value={surahColor}
-                          onChange={(e) => setSurahColor(e.target.value)}
-                          className="h-6 w-6 cursor-pointer border-0 bg-transparent"
-                        />
-                        <span className="text-xs font-mono font-bold uppercase text-[#1f2532]">{surahColor}</span>
-                      </div>
-                    </div>
-                    <div>
-                      <div className="mb-2 flex items-center gap-2 text-xs font-bold text-[#5b6373]">
-                        <Layers size={14} className="text-[#1f6feb]" />
-                        <span>ظل السورة</span>
-                      </div>
-                      <div className="flex h-12 items-center gap-3 rounded-xl border border-[#e3e7ef] bg-[#f8f9fc] px-3">
-                        <input
-                          type="color"
-                          value={surahShadowColor}
-                          onChange={(e) => setSurahShadowColor(e.target.value)}
-                          className="h-6 w-6 cursor-pointer border-0 bg-transparent"
-                        />
-                        <span className="text-xs font-mono font-bold uppercase text-[#1f2532]">{surahShadowColor}</span>
-                      </div>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-
-            <div className="space-y-4 border-t border-[#eceff4] pt-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-sm font-bold text-[#1f2532]">
-                  <AudioLines size={18} className="text-[#1677ff]" />
-                  <span>موجة الصوت (Waveform)</span>
+                  <span className={`text-sm font-bold ${activeAccordion === "background" ? "text-[#1677ff]" : "text-[#1f2532]"}`}>الخلفية والمؤثرات</span>
                 </div>
-                <button
-                  onClick={() => setShowWave(!showWave)}
-                  className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${showWave ? "bg-[#1677ff]" : "bg-[#dde1ea]"
-                    }`}
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${showWave ? "-translate-x-4" : "translate-x-0"
-                      }`}
-                  />
-                </button>
-              </div>
+                <ChevronDown size={18} className={`text-[#8a93a5] transition-transform duration-300 ${activeAccordion === "background" ? "rotate-180" : ""}`} />
+              </button>
 
-              {showWave && (
-                <>
-                  <div className="mt-4 grid grid-cols-1 gap-4">
-                    <div>
-                      <div className="mb-2 flex items-center gap-2 text-xs font-bold text-[#5b6373]">
-                        <Palette size={14} className="text-[#1f6feb]" />
-                        <span>لون الموجة</span>
-                      </div>
-                      <div className="flex h-12 items-center gap-3 rounded-xl border border-[#e3e7ef] bg-[#f8f9fc] px-3">
-                        <input
-                          type="color"
-                          value={waveColor}
-                          onChange={(e) => setWaveColor(e.target.value)}
-                          className="h-6 w-6 cursor-pointer border-0 bg-transparent"
-                        />
-                        <span className="text-xs font-mono font-bold uppercase text-[#1f2532]">{waveColor}</span>
-                      </div>
+              <div className={`grid transition-all duration-300 ease-in-out ${activeAccordion === "background" ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}>
+                <div className="overflow-hidden">
+                  <div className="px-5 pb-5 pt-1">
+                    <div className="grid grid-cols-4 gap-2">
+                      {[bg1, bg2, bg3, bg4, bg5].map((bg, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => setBgImage(bg)}
+                          className={`relative aspect-video flex-shrink-0 cursor-pointer overflow-hidden rounded-lg border-2 transition-all ${bgImage === bg ? "border-[#1677ff] shadow-sm" : "border-transparent"}`}
+                        >
+                          <Image src={bg} alt={`BG ${idx + 1}`} fill className="object-cover" />
+                        </button>
+                      ))}
+                      <label className="flex aspect-video cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-[#dce6f8] bg-white hover:bg-[#eef4ff] transition-all">
+                        <ImagePlus size={14} className="text-[#1f6feb]" />
+                        <input type="file" hidden accept="image/*" onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onload = (event) => setBgImage(event.target?.result as string);
+                            reader.readAsDataURL(file);
+                          }
+                        }} />
+                      </label>
                     </div>
-
-                    <div>
-                      <div className="mb-3 flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-xs font-bold text-[#5b6373]">
-                          <MoveVertical size={14} className="text-[#1f6feb]" />
-                          <span>ارتفاع الموجة (السعة)</span>
+                    <div className="mt-5 space-y-4">
+                      <div>
+                        <div className="mb-2 flex items-center justify-between text-[11px] font-bold text-[#5b6373]">
+                          <span>تعتيم الخلفية</span>
+                          <span className="text-[#1677ff]">{Math.round(bgDim * 100)}%</span>
                         </div>
-                        <span className="text-xs font-bold text-[#1f6feb]">{waveHeight}px</span>
-                      </div>
-                      <div className="relative flex h-14 w-full items-center rounded-2xl border border-[#e3e7ef] bg-[#f8f9fc] px-4">
                         <input
-                          type="range"
-                          min="20"
-                          max="150"
-                          value={waveHeight}
-                          onChange={(e) => setWaveHeight(Number(e.target.value))}
-                          className="h-2 w-full cursor-pointer appearance-none rounded-lg bg-[#dde4f0] accent-[#1677ff]"
+                          type="range" min="0" max="0.9" step="0.01" value={bgDim}
+                          onChange={(e) => setBgDim(Number(e.target.value))}
+                          className="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-[#dde4f0] accent-[#1677ff]"
                         />
                       </div>
-                    </div>
-
-                    <div>
-                      <div className="mb-3 flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-xs font-bold text-[#5b6373]">
-                          <MoveVertical size={14} className="text-[#1f6feb]" />
-                          <span>موضع الموجة (عمودياً)</span>
+                      <div>
+                        <div className="mb-2 flex items-center justify-between text-[11px] font-bold text-[#5b6373]">
+                          <span>ضبابية (Blur)</span>
+                          <span className="text-[#1677ff]">{bgBlur}px</span>
                         </div>
-                        <span className="text-xs font-bold text-[#1f6feb]">{waveY}%</span>
-                      </div>
-                      <div className="relative flex h-14 w-full items-center rounded-2xl border border-[#e3e7ef] bg-[#f8f9fc] px-4">
                         <input
-                          type="range"
-                          min="0"
-                          max="95"
-                          step="1"
-                          value={waveY}
-                          onChange={(e) => setWaveY(Number(e.target.value))}
-                          className="h-2 w-full cursor-pointer appearance-none rounded-lg bg-[#dde4f0] accent-[#1677ff]"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="mb-3 flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-xs font-bold text-[#5b6373]">
-                          <MoveHorizontal size={14} className="text-[#1f6feb]" />
-                          <span>موضع الموجة (أفقياً)</span>
-                        </div>
-                        <span className="text-xs font-bold text-[#1f6feb]">{waveX}%</span>
-                      </div>
-                      <div className="relative flex h-14 w-full items-center rounded-2xl border border-[#e3e7ef] bg-[#f8f9fc] px-4">
-                        <input
-                          type="range"
-                          min="0"
-                          max="100"
-                          step="1"
-                          value={waveX}
-                          onChange={(e) => setWaveX(Number(e.target.value))}
-                          className="h-2 w-full cursor-pointer appearance-none rounded-lg bg-[#dde4f0] accent-[#1677ff]"
+                          type="range" min="0" max="20" step="1" value={bgBlur}
+                          onChange={(e) => setBgBlur(Number(e.target.value))}
+                          className="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-[#dde4f0] accent-[#1677ff]"
                         />
                       </div>
                     </div>
                   </div>
-                </>
-              )}
+                </div>
+              </div>
             </div>
 
-            <div className="space-y-4 border-t border-[#eceff4] pt-6 pb-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-sm font-bold text-[#1f2532]">
-                  <ImagePlus size={18} className="text-[#1677ff]" />
-                  <span>علامة مائية (Logo)</span>
-                </div>
-                <button
-                  onClick={() => setShowWatermark(!showWatermark)}
-                  className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${showWatermark ? "bg-[#1677ff]" : "bg-[#dde1ea]"
-                    }`}
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${showWatermark ? "-translate-x-4" : "translate-x-0"
-                      }`}
-                  />
-                </button>
-              </div>
-
-              {showWatermark && (
-                <div className="mt-4 space-y-4 rounded-2xl bg-[#f8f9fc] p-4 border border-[#e3e7ef]">
-                  <div className="flex rounded-xl bg-[#ebedf2] p-1">
-                    <button
-                      onClick={() => setWatermarkMode("image")}
-                      className={`flex-1 rounded-lg py-2 text-xs font-bold transition-all ${watermarkMode === "image"
-                        ? "bg-white text-[#1677ff] shadow-sm"
-                        : "text-[#6a7385] hover:text-[#1f2532]"
-                        }`}
-                    >
-                      صورة
-                    </button>
-                    <button
-                      onClick={() => setWatermarkMode("text")}
-                      className={`flex-1 rounded-lg py-2 text-xs font-bold transition-all ${watermarkMode === "text"
-                        ? "bg-white text-[#1677ff] shadow-sm"
-                        : "text-[#6a7385] hover:text-[#1f2532]"
-                        }`}
-                    >
-                      نص
-                    </button>
+            {/* --- Appearance --- */}
+            <div className={`overflow-hidden rounded-2xl border transition-all duration-300 ${activeAccordion === "appearance" ? "border-[#1677ff] bg-white shadow-sm" : "border-[#e3e7ef] bg-[#f8f9fc]"}`}>
+              <button
+                onClick={() => setActiveAccordion(activeAccordion === "appearance" ? "" : "appearance")}
+                className="flex w-full items-center justify-between px-5 py-4 text-right"
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${activeAccordion === "appearance" ? "bg-[#1677ff] text-white" : "bg-[#ebedf2] text-[#5b6373]"}`}>
+                    <Palette size={16} />
                   </div>
+                  <span className={`text-sm font-bold ${activeAccordion === "appearance" ? "text-[#1677ff]" : "text-[#1f2532]"}`}>تنسيق النصوص والآيات</span>
+                </div>
+                <ChevronDown size={18} className={`text-[#8a93a5] transition-transform duration-300 ${activeAccordion === "appearance" ? "rotate-180" : ""}`} />
+              </button>
 
-                  {watermarkMode === "image" ? (
-                    <div>
-                      {!watermarkImage ? (
-                        <label className="flex h-20 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-[#dce6f8] bg-white hover:bg-[#f0f7ff] transition-all">
-                          <ImagePlus size={20} className="text-[#1f6feb]" />
-                          <span className="mt-1 text-[10px] font-bold text-[#1f6feb]">رفع الشعار (PNG)</span>
-                          <input
-                            type="file"
-                            hidden
-                            accept="image/png,image/jpeg"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) {
-                                const reader = new FileReader();
-                                reader.onload = (event) => setWatermarkImage(event.target?.result as string);
-                                reader.readAsDataURL(file);
-                              }
-                            }}
-                          />
-                        </label>
-                      ) : (
-                        <div className="relative group aspect-video rounded-xl overflow-hidden border border-[#dce6f8] bg-white flex items-center justify-center p-4">
-                          <img src={watermarkImage} alt="Watermark Preview" className="max-h-full object-contain" />
-                          <button
-                            onClick={() => setWatermarkImage(null)}
-                            className="absolute inset-0 bg-black/40 text-white opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-xs font-bold"
-                          >
-                            تغيير الصورة
-                          </button>
+              <div className={`grid transition-all duration-300 ease-in-out ${activeAccordion === "appearance" ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}>
+                <div className="overflow-hidden">
+                  <div className="space-y-5 px-5 pb-5 pt-1">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <div className="mb-2 text-[10px] font-bold text-[#81899a]">حجم الخط</div>
+                        <div className="flex items-center gap-3 h-10 px-3 bg-white border border-[#e3e7ef] rounded-xl">
+                          <input type="range" min="16" max="80" value={ayahFontSize} onChange={(e) => setAyahFontSize(Number(e.target.value))} className="h-1 flex-1 accent-[#1677ff]" />
+                          <span className="text-xs font-bold text-[#1f2532] w-6">{ayahFontSize}</span>
+                        </div>
+                      </div>
+                      <div>
+                        <div className="mb-2 text-[10px] font-bold text-[#81899a]">لون الخط</div>
+                        <div className="flex items-center gap-2 h-10 px-2 bg-white border border-[#e3e7ef] rounded-xl overflow-hidden">
+                          <input type="color" value={ayahColor} onChange={(e) => setAyahColor(e.target.value)} className="h-6 w-6 cursor-pointer border-0 bg-transparent" />
+                          <span className="text-[9px] font-mono font-bold uppercase truncate">{ayahColor}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="space-y-4">
+                      <div>
+                        <div className="mb-2 flex items-center justify-between text-[11px] font-bold text-[#5b6373]">
+                          <span>الموقع العمودي (Y)</span>
+                          <span className="text-[#1677ff]">{yPosition}%</span>
+                        </div>
+                        <input type="range" min="5" max="85" value={yPosition} onChange={(e) => setYPosition(Number(e.target.value))} className="h-1.5 w-full accent-[#1677ff]" />
+                      </div>
+                      <div>
+                        <div className="mb-2 flex items-center justify-between text-[11px] font-bold text-[#5b6373]">
+                          <span>الموقع الأفقي (X)</span>
+                          <span className="text-[#1677ff]">{xPosition}%</span>
+                        </div>
+                        <input type="range" min="10" max="90" value={xPosition} onChange={(e) => setXPosition(Number(e.target.value))} className="h-1.5 w-full accent-[#1677ff]" />
+                      </div>
+                    </div>
+                    <div className="border-t border-[#ebedf2] pt-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-xs font-bold text-[#1f2532]">إظهار اسم السورة</span>
+                        <button onClick={() => setShowSurahName(!showSurahName)} className={`relative h-5 w-9 rounded-full transition-colors ${showSurahName ? "bg-[#1677ff]" : "bg-[#dde1ea]"}`}>
+                          <span className={`absolute top-1 h-3 w-3 rounded-full bg-white transition-all ${showSurahName ? "left-1" : "left-5"}`} />
+                        </button>
+                      </div>
+                      {showSurahName && (
+                        <div className="grid grid-cols-2 gap-3 mt-3">
+                           <div>
+                            <div className="mb-1 text-[10px] font-bold text-[#81899a]">الحجم</div>
+                            <input type="range" min="12" max="60" value={surahFontSize} onChange={(e) => setSurahFontSize(Number(e.target.value))} className="w-full h-1" />
+                           </div>
+                           <div>
+                            <div className="mb-1 text-[10px] font-bold text-[#81899a]">الموقع Y</div>
+                            <input type="range" min="2" max="95" value={surahYPosition} onChange={(e) => setSurahYPosition(Number(e.target.value))} className="w-full h-1" />
+                           </div>
                         </div>
                       )}
                     </div>
-                  ) : (
-                    <div className="space-y-3">
-                      <input
-                        type="text"
-                        value={watermarkText}
-                        onChange={(e) => setWatermarkText(e.target.value)}
-                        placeholder="اكتب النص هنا..."
-                        className="h-11 w-full rounded-xl border border-[#e3e7ef] bg-white px-4 text-sm font-bold text-[#1f2532] outline-none transition focus:border-[#1677ff]"
-                      />
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-[#5b6373]">لون النص</span>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="color"
-                            value={watermarkTextColor}
-                            onChange={(e) => setWatermarkTextColor(e.target.value)}
-                            className="h-8 w-8 cursor-pointer border-0 bg-transparent"
-                          />
-                          <span className="text-[10px] font-mono font-bold uppercase text-[#1f2532]">{watermarkTextColor}</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-2 gap-4 pt-2">
-                    <div>
-                      <div className="mb-2 flex items-center justify-between text-[11px] font-bold text-[#5b6373]">
-                        <span>الحجم</span>
-                        <span className="text-[#1677ff]">{watermarkSize}px</span>
-                      </div>
-                      <input
-                        type="range"
-                        min="10"
-                        max="200"
-                        value={watermarkSize}
-                        onChange={(e) => setWatermarkSize(Number(e.target.value))}
-                        className="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-[#dde4f0] accent-[#1677ff]"
-                      />
-                    </div>
-                    <div>
-                      <div className="mb-2 flex items-center justify-between text-[11px] font-bold text-[#5b6373]">
-                        <span>الشفافية</span>
-                        <span className="text-[#1677ff]">{Math.round(watermarkOpacity * 100)}%</span>
-                      </div>
-                      <input
-                        type="range"
-                        min="0"
-                        max="1"
-                        step="0.01"
-                        value={watermarkOpacity}
-                        onChange={(e) => setWatermarkOpacity(Number(e.target.value))}
-                        className="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-[#dde4f0] accent-[#1677ff]"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4 pb-1">
-                    <div>
-                      <div className="mb-2 flex items-center justify-between text-[11px] font-bold text-[#5b6373]">
-                        <span>موقع X</span>
-                        <span className="text-[#1677ff]">{watermarkX}%</span>
-                      </div>
-                      <input
-                        type="range"
-                        min="0"
-                        max="50"
-                        value={watermarkX}
-                        onChange={(e) => setWatermarkX(Number(e.target.value))}
-                        className="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-[#dde4f0] accent-[#1677ff]"
-                      />
-                    </div>
-                    <div>
-                      <div className="mb-2 flex items-center justify-between text-[11px] font-bold text-[#5b6373]">
-                        <span>موقع Y</span>
-                        <span className="text-[#1677ff]">{watermarkY}%</span>
-                      </div>
-                      <input
-                        type="range"
-                        min="0"
-                        max="50"
-                        value={watermarkY}
-                        onChange={(e) => setWatermarkY(Number(e.target.value))}
-                        className="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-[#dde4f0] accent-[#1677ff]"
-                      />
-                    </div>
                   </div>
                 </div>
-              )}
+              </div>
             </div>
 
+            {/* --- Waveform --- */}
+            <div className={`overflow-hidden rounded-2xl border transition-all duration-300 ${activeAccordion === "wave" ? "border-[#1677ff] bg-white shadow-sm" : "border-[#e3e7ef] bg-[#f8f9fc]"}`}>
+              <button
+                onClick={() => setActiveAccordion(activeAccordion === "wave" ? "" : "wave")}
+                className="flex w-full items-center justify-between px-5 py-4 text-right"
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${activeAccordion === "wave" ? "bg-[#1677ff] text-white" : "bg-[#ebedf2] text-[#5b6373]"}`}>
+                    <AudioLines size={16} />
+                  </div>
+                  <span className={`text-sm font-bold ${activeAccordion === "wave" ? "text-[#1677ff]" : "text-[#1f2532]"}`}>موجة الصوت (Waveform)</span>
+                </div>
+                <ChevronDown size={18} className={`text-[#8a93a5] transition-transform duration-300 ${activeAccordion === "wave" ? "rotate-180" : ""}`} />
+              </button>
 
+              <div className={`grid transition-all duration-300 ease-in-out ${activeAccordion === "wave" ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}>
+                <div className="overflow-hidden">
+                  <div className="space-y-5 px-5 pb-5 pt-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-[#1f2532]">تفعيل الموجة</span>
+                      <button onClick={() => setShowWave(!showWave)} className={`relative h-5 w-9 rounded-full transition-colors ${showWave ? "bg-[#1677ff]" : "bg-[#dde1ea]"}`}>
+                        <span className={`absolute top-1 h-3 w-3 rounded-full bg-white transition-all ${showWave ? "left-1" : "left-5"}`} />
+                      </button>
+                    </div>
+                    {showWave && (
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <div className="mb-2 text-[10px] font-bold text-[#81899a]">اللون</div>
+                            <input type="color" value={waveColor} onChange={(e) => setWaveColor(e.target.value)} className="w-full h-8 cursor-pointer border-0 bg-transparent" />
+                          </div>
+                          <div>
+                            <div className="mb-2 text-[10px] font-bold text-[#81899a]">الارتفاع</div>
+                            <input type="range" min="20" max="150" value={waveHeight} onChange={(e) => setWaveHeight(Number(e.target.value))} className="w-full h-1" />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <div className="mb-1 text-[10px] font-bold text-[#81899a]">موقع Y</div>
+                            <input type="range" min="0" max="95" value={waveY} onChange={(e) => setWaveY(Number(e.target.value))} className="w-full h-1" />
+                          </div>
+                          <div>
+                            <div className="mb-1 text-[10px] font-bold text-[#81899a]">موقع X</div>
+                            <input type="range" min="0" max="100" value={waveX} onChange={(e) => setWaveX(Number(e.target.value))} className="w-full h-1" />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* --- Watermark --- */}
+            <div className={`overflow-hidden rounded-2xl border transition-all duration-300 ${activeAccordion === "watermark" ? "border-[#1677ff] bg-white shadow-sm" : "border-[#e3e7ef] bg-[#f8f9fc]"}`}>
+              <button
+                onClick={() => setActiveAccordion(activeAccordion === "watermark" ? "" : "watermark")}
+                className="flex w-full items-center justify-between px-5 py-4 text-right"
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${activeAccordion === "watermark" ? "bg-[#1677ff] text-white" : "bg-[#ebedf2] text-[#5b6373]"}`}>
+                    <MoveVertical size={16} />
+                  </div>
+                  <span className={`text-sm font-bold ${activeAccordion === "watermark" ? "text-[#1677ff]" : "text-[#1f2532]"}`}>العلامة المائية (Logo)</span>
+                </div>
+                <ChevronDown size={18} className={`text-[#8a93a5] transition-transform duration-300 ${activeAccordion === "watermark" ? "rotate-180" : ""}`} />
+              </button>
+
+              <div className={`grid transition-all duration-300 ease-in-out ${activeAccordion === "watermark" ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}>
+                <div className="overflow-hidden">
+                  <div className="space-y-4 px-5 pb-5 pt-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-[#1f2532]">تفعيل الشعار</span>
+                      <button onClick={() => setShowWatermark(!showWatermark)} className={`relative h-5 w-9 rounded-full transition-colors ${showWatermark ? "bg-[#1677ff]" : "bg-[#dde1ea]"}`}>
+                        <span className={`absolute top-1 h-3 w-3 rounded-full bg-white transition-all ${showWatermark ? "left-1" : "left-5"}`} />
+                      </button>
+                    </div>
+                    {showWatermark && (
+                      <div className="space-y-4">
+                        <div className="flex rounded-lg bg-[#ebedf2] p-1">
+                          <button onClick={() => setWatermarkMode("image")} className={`flex-1 rounded-md py-1.5 text-[10px] font-bold ${watermarkMode === "image" ? "bg-white text-[#1677ff]" : "text-[#5b6373]"}`}>صورة</button>
+                          <button onClick={() => setWatermarkMode("text")} className={`flex-1 rounded-md py-1.5 text-[10px] font-bold ${watermarkMode === "text" ? "bg-white text-[#1677ff]" : "text-[#5b6373]"}`}>نص</button>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <div className="mb-1 text-[10px] font-bold text-[#81899a]">الحجم</div>
+                            <input type="range" min="10" max="200" value={watermarkSize} onChange={(e) => setWatermarkSize(Number(e.target.value))} className="w-full h-1" />
+                          </div>
+                          <div>
+                            <div className="mb-1 text-[10px] font-bold text-[#81899a]">الشفافية</div>
+                            <input type="range" min="0" max="1" step="0.01" value={watermarkOpacity} onChange={(e) => setWatermarkOpacity(Number(e.target.value))} className="w-full h-1" />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <div className="mb-1 text-[10px] font-bold text-[#81899a]">الموقع X</div>
+                            <input type="range" min="0" max="50" value={watermarkX} onChange={(e) => setWatermarkX(Number(e.target.value))} className="w-full h-1" />
+                          </div>
+                          <div>
+                            <div className="mb-1 text-[10px] font-bold text-[#81899a]">الموقع Y</div>
+                            <input type="range" min="0" max="50" value={watermarkY} onChange={(e) => setWatermarkY(Number(e.target.value))} className="w-full h-1" />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
