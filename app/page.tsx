@@ -10,6 +10,17 @@ import bg4 from "@/assets/images/4.svg";
 import bg5 from "@/assets/images/5.svg";
 import surahsData from "@/assets/quran_surahs.json";
 import quranDataRaw from "@/assets/quran.json";
+import recitersDataRaw from "@/assets/reciters.json";
+
+type Reciter = {
+  id: string;
+  name: string;
+  name_ar?: string;
+  sample: string;
+};
+
+const recitersData = recitersDataRaw as { reciters: Reciter[] };
+const reciters = recitersData.reciters;
 
 
 type Surah = {
@@ -120,9 +131,10 @@ export default function Home() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [exportProgress, setExportProgress] = useState<number>(0);
-  const [activeAccordion, setActiveAccordion] = useState<string>("dimensions");
+  const [activeAccordion, setActiveAccordion] = useState<string>("selection");
   const [bgBlur, setBgBlur] = useState<number>(0);
   const [bgDim, setBgDim] = useState<number>(0.3);
+  const [selectedReciterId, setSelectedReciterId] = useState<string>(reciters[0].id);
   const previewRef = useRef<HTMLDivElement | null>(null);
 
   const selectedSurah = useMemo(
@@ -153,13 +165,17 @@ export default function Home() {
   useEffect(() => {
     if (isPlaying && selectedAyahs[currentAyahIndex]) {
       const ayah = selectedAyahs[currentAyahIndex];
-      const audioUrl = `/audio-proxy/ar.alafasy/${ayah.number}.mp3`;
+      // Formula: /audio-proxy/{reciter_id}/{surah_3_digits}{ayah_3_digits}.mp3
+      const s = String(selectedSurahNumber).padStart(3, "0");
+      const a = String(ayah.numberInSurah).padStart(3, "0");
+      const audioUrl = `/audio-proxy/${selectedReciterId}/${s}${a}.mp3`;
+      
       if (audioRef.current) {
         audioRef.current.src = audioUrl;
         audioRef.current.play().catch(err => console.error("Playback failed", err));
       }
     }
-  }, [isPlaying, currentAyahIndex, selectedAyahs]);
+  }, [isPlaying, currentAyahIndex, selectedAyahs, selectedReciterId]);
 
   const handleAudioEnded = () => {
     if (currentAyahIndex < selectedAyahs.length - 1) {
@@ -400,7 +416,10 @@ export default function Home() {
         const ayah = selectedAyahs[i];
         // setCurrentAyahIndex(i); // Stay on current view during export
 
-        const audioUrl = `/audio-proxy/ar.alafasy/${ayah.number}.mp3`;
+        const sNum = String(selectedSurahNumber).padStart(3, "0");
+        const aNum = String(ayah.numberInSurah).padStart(3, "0");
+        const audioUrl = `/audio-proxy/${selectedReciterId}/${sNum}${aNum}.mp3`;
+        
         let audioBuffer: AudioBuffer | null = null;
         try {
           const resp = await fetch(audioUrl);
@@ -831,6 +850,23 @@ return (
               <div className={`grid transition-all duration-300 ease-in-out ${activeAccordion === "selection" ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}>
                 <div className="overflow-hidden">
                   <div className="space-y-4 px-5 pb-5 pt-1">
+                    <div>
+                      <label className="mb-2 block text-[11px] font-bold text-[#81899a]">القارئ</label>
+                      <div className="relative">
+                        <select
+                          value={selectedReciterId}
+                          onChange={(e) => setSelectedReciterId(e.target.value)}
+                          className="h-12 w-full appearance-none rounded-xl border border-[#e3e7ef] bg-white px-4 text-sm font-bold text-[#1f2532] outline-none transition focus:border-[#2f7dff]"
+                        >
+                          {reciters.map((r) => (
+                            <option key={r.id} value={r.id}>
+                              {r.name_ar || r.name}
+                            </option>
+                          ))}
+                        </select>
+                        <ChevronDown className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#6e7786]" size={16} />
+                      </div>
+                    </div>
                     <div>
                       <label htmlFor="surahSelect" className="mb-2 block text-[11px] font-bold text-[#81899a]">السورة</label>
                       <div className="relative">

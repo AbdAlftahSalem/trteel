@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/audio-proxy/:path*',
-        destination: 'https://cdn.islamic.network/quran/audio/128/:path*',
+        destination: 'https://everyayah.com/data/:path*',
       },
     ]
   },
