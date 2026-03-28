@@ -529,6 +529,7 @@ return (
             alt="Quran video preview"
             fill
             priority
+            loading="eager"
             className={`object-cover transition-transform duration-[10000ms] ease-linear ${isPlaying ? "scale-110" : "scale-100"}`}
             style={{ filter: `blur(${bgBlur}px)` }}
           />

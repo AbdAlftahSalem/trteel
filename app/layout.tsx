@@ -19,7 +19,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ar" dir="rtl" className={`${tajawal.variable} antialiased`}>
+    <html lang="ar" dir="rtl" className={`${tajawal.variable} antialiased`} suppressHydrationWarning>
       <body className="min-h-screen bg-gray-50 flex flex-col font-sans">
         {children}
       </body>
