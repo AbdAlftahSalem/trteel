@@ -2,12 +2,15 @@
 
 import Image from "next/image";
 import { useMemo, useState, useRef, useEffect } from "react";
-import { Play, Pause, SkipForward, SkipBack, ALargeSmall, AudioLines, ChevronDown, Clapperboard, ImagePlus, Layers, Moon, MoveHorizontal, MoveVertical, Palette, UserRound, Download } from "lucide-react";
+import { Play, Pause, SkipForward, SkipBack, ALargeSmall, AudioLines, ChevronDown, Clapperboard, ImagePlus, Layers, Moon, MoveHorizontal, MoveVertical, Palette, UserRound, Download, MessageCircle } from "lucide-react";
 import bg1 from "@/assets/images/1.svg";
 import bg2 from "@/assets/images/2.svg";
 import bg3 from "@/assets/images/3.svg";
 import bg4 from "@/assets/images/4.svg";
 import bg5 from "@/assets/images/5.svg";
+import bg6 from "@/assets/images/bg6.png";
+import bg7 from "@/assets/images/bg7.png";
+import bg8 from "@/assets/images/bg8.png";
 import surahsData from "@/assets/quran_surahs.json";
 import quranDataRaw from "@/assets/quran.json";
 import recitersDataRaw from "@/assets/reciters.json";
@@ -652,13 +655,6 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* Top Info Badge */}
-                <div className="absolute top-6 left-6 pointer-events-none">
-                  <div className="flex items-center gap-2 rounded-full bg-black/40 backdrop-blur-md border border-white/10 px-3 py-1.5 text-white">
-                    <div className={`h-2 w-2 rounded-full ${isPlaying ? "bg-red-500 animate-pulse" : "bg-white/40"}`} />
-                    <span className="text-[10px] font-bold tracking-tight uppercase">Preview Studio</span>
-                  </div>
-                </div>
               </div>
 
               <div
@@ -784,7 +780,7 @@ export default function Home() {
             <header className={`flex items-center justify-between border-b px-6 py-5 transition-colors ${isDarkMode ? "border-[#212735]" : "border-[#eceff4]"}`}>
               <div className="text-right">
                 <p className={`text-xl font-extrabold ${isDarkMode ? "text-[#3489ff]" : "text-[#1677ff]"}`}>ترتيل</p>
-                <p className={`text-xs font-semibold ${isDarkMode ? "text-[#8a93a5]" : "text-[#8a93a5]"}`}>Quran Video Studio</p>
+                <p className={`text-[10px] font-bold ${isDarkMode ? "text-[#8a93a5]" : "text-[#8a93a5]"}`}>استوديو فيديوهات القرآن الكريم</p>
               </div>
 
               <div className="flex items-center gap-2">
@@ -952,17 +948,18 @@ export default function Home() {
                   <div className={`grid transition-all duration-300 ease-in-out ${activeAccordion === "background" ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}>
                     <div className="overflow-hidden">
                       <div className="px-5 pb-5 pt-1">
-                        <div className="grid grid-cols-4 gap-2">
-                          {[bg1, bg2, bg3, bg4, bg5].map((bg, idx) => (
+                        <div className="grid grid-cols-3 gap-3">
+                          {[bg1, bg2, bg3, bg4, bg5, bg6, bg7, bg8].map((bg, idx) => (
                             <button
                               key={idx}
                               onClick={() => setBgImage(bg)}
-                              className={`relative aspect-video flex-shrink-0 cursor-pointer overflow-hidden rounded-lg border-2 transition-all ${bgImage === bg ? "border-[#1677ff] shadow-sm" : "border-transparent"}`}
+                              className={`group relative aspect-square flex-shrink-0 cursor-pointer overflow-hidden rounded-xl border-2 transition-all duration-500 hover:scale-110 hover:shadow-[0_0_20px_rgba(22,119,255,0.4)] hover:z-10 hover:brightness-110 ${bgImage === bg ? "border-[#1677ff] shadow-[0_0_25px_rgba(22,119,255,0.5)] scale-[1.05] ring-2 ring-[#1677ff]/40" : "border-transparent"}`}
                             >
-                              <Image src={bg} alt={`BG ${idx + 1}`} fill className="object-cover" />
+                              <Image src={bg} alt={`BG ${idx + 1}`} fill className="object-cover transition-transform duration-700 group-hover:scale-125" />
+                              <div className={`absolute inset-0 transition-opacity duration-300 ${bgImage === bg ? "bg-black/0" : "bg-black/30 group-hover:bg-black/0"}`} />
                             </button>
                           ))}
-                          <label className={`flex aspect-video cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed transition-all ${isDarkMode ? "border-[#2f3545] bg-[#252c3c] hover:bg-[#2c3346]" : "border-[#dce6f8] bg-white hover:bg-[#eef4ff]"}`}>
+                          <label className={`flex aspect-square cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed transition-all ${isDarkMode ? "border-[#2f3545] bg-[#252c3c] hover:bg-[#2c3346]" : "border-[#dce6f8] bg-white hover:bg-[#eef4ff]"}`}>
                             <ImagePlus size={14} className="text-[#1f6feb]" />
                             <input type="file" hidden accept="image/*" onChange={(e) => {
                               const file = e.target.files?.[0];
@@ -1054,12 +1051,16 @@ export default function Home() {
                           </div>
                         </div>
                         <div className="border-t border-[#ebedf2] pt-4">
-                          <div className="flex items-center justify-between mb-3">
-                            <span className="text-xs font-bold text-[#1f2532]">إظهار اسم السورة</span>
-                            <button onClick={() => setShowSurahName(!showSurahName)} className={`relative h-5 w-9 rounded-full transition-colors ${showSurahName ? "bg-[#1677ff]" : "bg-[#dde1ea]"}`}>
+                          <button
+                            type="button"
+                            onClick={() => setShowSurahName(!showSurahName)}
+                            className="flex w-full items-center justify-between py-1 text-right"
+                          >
+                            <span className={`text-xs font-bold ${isDarkMode ? "text-white" : "text-[#1f2532]"}`}>إظهار اسم السورة</span>
+                            <div className={`relative h-5 w-9 rounded-full transition-colors ${showSurahName ? "bg-[#1677ff]" : "bg-[#dde1ea]"}`}>
                               <span className={`absolute top-1 h-3 w-3 rounded-full bg-white transition-all ${showSurahName ? "left-1" : "left-5"}`} />
-                            </button>
-                          </div>
+                            </div>
+                          </button>
                           {showSurahName && (
                             <div className="grid grid-cols-2 gap-3 mt-3">
                               <div>
@@ -1096,12 +1097,16 @@ export default function Home() {
                   <div className={`grid transition-all duration-300 ease-in-out ${activeAccordion === "wave" ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}>
                     <div className="overflow-hidden">
                       <div className="space-y-5 px-5 pb-5 pt-1">
-                        <div className="flex items-center justify-between">
+                        <button
+                          type="button"
+                          onClick={() => setShowWave(!showWave)}
+                          className="flex w-full items-center justify-between py-1 text-right"
+                        >
                           <span className={`text-xs font-bold ${isDarkMode ? "text-white" : "text-[#1f2532]"}`}>تفعيل الموجة</span>
-                          <button onClick={() => setShowWave(!showWave)} className={`relative h-5 w-9 rounded-full transition-colors ${showWave ? "bg-[#1677ff]" : isDarkMode ? "bg-[#2f3545]" : "bg-[#dde1ea]"}`}>
+                          <div className={`relative h-5 w-9 rounded-full transition-colors ${showWave ? "bg-[#1677ff]" : isDarkMode ? "bg-[#2f3545]" : "bg-[#dde1ea]"}`}>
                             <span className={`absolute top-1 h-3 w-3 rounded-full bg-white transition-all ${showWave ? "left-1" : "left-5"}`} />
-                          </button>
-                        </div>
+                          </div>
+                        </button>
                         {showWave && (
                           <div className="space-y-4">
                             <div className="grid grid-cols-2 gap-3">
@@ -1149,12 +1154,16 @@ export default function Home() {
                   <div className={`grid transition-all duration-300 ease-in-out ${activeAccordion === "watermark" ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}>
                     <div className="overflow-hidden">
                       <div className="space-y-4 px-5 pb-5 pt-1">
-                        <div className="flex items-center justify-between">
+                        <button
+                          type="button"
+                          onClick={() => setShowWatermark(!showWatermark)}
+                          className="flex w-full items-center justify-between py-1 text-right"
+                        >
                           <span className={`text-xs font-bold ${isDarkMode ? "text-white" : "text-[#1f2532]"}`}>تفعيل الشعار</span>
-                          <button onClick={() => setShowWatermark(!showWatermark)} className={`relative h-5 w-9 rounded-full transition-colors ${showWatermark ? "bg-[#1677ff]" : isDarkMode ? "bg-[#2f3545]" : "bg-[#dde1ea]"}`}>
+                          <div className={`relative h-5 w-9 rounded-full transition-colors ${showWatermark ? "bg-[#1677ff]" : isDarkMode ? "bg-[#2f3545]" : "bg-[#dde1ea]"}`}>
                             <span className={`absolute top-1 h-3 w-3 rounded-full bg-white transition-all ${showWatermark ? "left-1" : "left-5"}`} />
-                          </button>
-                        </div>
+                          </div>
+                        </button>
                         {showWatermark && (
                           <div className="space-y-4">
                             <div className={`flex rounded-lg p-1 ${isDarkMode ? "bg-[#252c3c]" : "bg-[#ebedf2]"}`}>
@@ -1187,10 +1196,11 @@ export default function Home() {
                     </div>
                   </div>
                 </div>
+
               </div>
             </div>
 
-            <footer className={`border-t p-5 transition-colors ${isDarkMode ? "bg-[#161a23] border-[#212735]" : "bg-white border-[#eceff4]"}`}>
+            <footer className={`flex flex-col gap-4 border-t p-5 transition-colors ${isDarkMode ? "bg-[#161a23] border-[#212735]" : "bg-white border-[#eceff4]"}`}>
               <button
                 type="button"
                 onClick={handleExport}
@@ -1218,6 +1228,34 @@ export default function Home() {
                   </>
                 )}
               </button>
+
+              {/* Premium Developer Branding Card (Below Export) */}
+              <a
+                href="https://wa.me/972598045064"
+                target="_blank"
+                rel="noreferrer"
+                className={`group block overflow-hidden rounded-[20px] border transition-all duration-500 hover:scale-[1.02] active:scale-[0.98] ${isDarkMode ? "bg-gradient-to-br from-[#1c2230] to-[#11141d] border-[#212735] shadow-lg" : "bg-gradient-to-br from-[#f8faff] to-white border-[#eceff4] shadow-sm"}`}
+              >
+                <div className="p-3.5 flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className={`flex h-9 w-9 items-center justify-center rounded-xl transition-all duration-500 ${isDarkMode ? "bg-[#1677ff]/10 text-[#3489ff]" : "bg-[#1677ff]/5 text-[#1677ff]"}`}>
+                      <Clapperboard size={18} />
+                    </div>
+                    <div className="text-right">
+                      <p className={`text-[7px] font-bold uppercase tracking-[0.2em] ${isDarkMode ? "text-[#5b6373]" : "text-[#8a93a5]"}`}>الـتـطـويـر والـبـرمـجـة</p>
+                      <h3 className={`text-xs font-black ${isDarkMode ? "text-white" : "text-[#1f2532]"}`}>عبد الفتاح الـشـنـطـي</h3>
+                    </div>
+                  </div>
+                  <div
+                    className="group relative flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg bg-[#25d366] text-white transition-all shadow-md"
+                  >
+                    <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-1000 group-hover:translate-x-full" />
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+                    </svg>
+                  </div>
+                </div>
+              </a>
             </footer>
           </aside>
         </section>
