@@ -137,6 +137,10 @@ export default function Home() {
   const [selectedReciterId, setSelectedReciterId] = useState<string>(reciters[0].id);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
   const previewRef = useRef<HTMLDivElement | null>(null);
+  // Track actual rendered preview width so every px size in the preview
+  // scales proportionally (previewScale = renderedWidth / baseWidth).
+  const [previewWidth, setPreviewWidth] = useState<number>(400);
+  const previewScale = previewWidth / 400; // 400px is the design baseline
 
   const selectedSurah = useMemo(
     () =>
@@ -162,6 +166,21 @@ export default function Home() {
       audioRef.current.pause();
     }
   }, [selectedSurahNumber, fromAyah, toAyah]);
+
+  // ResizeObserver: keep previewWidth in sync with the rendered preview element.
+  // This drives previewScale so all fixed-px values in the preview flex with the container.
+  useEffect(() => {
+    const el = previewRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      const w = entries[0]?.contentRect.width;
+      if (w && w > 0) setPreviewWidth(w);
+    });
+    ro.observe(el);
+    // Set initial value immediately
+    if (el.clientWidth > 0) setPreviewWidth(el.clientWidth);
+    return () => ro.disconnect();
+  }, []);
 
   useEffect(() => {
     if (isPlaying && selectedAyahs[currentAyahIndex]) {
@@ -210,7 +229,11 @@ export default function Home() {
         "4/5": { w: 1080, h: 1350 },
       };
       const { w: CW, h: CH } = RES[aspectRatio] ?? { w: 1080, h: 1920 };
-      const SC = CW / 400;
+
+      // SC = CW / 400: the design baseline (400px is the reference preview width).
+      // previewScale in the live preview is previewW/400, and SC here is CW/400,
+      // so SC/previewScale = CW/previewW — giving a correct px mapping preview→export.
+      const SC = CW / 400; // design-baseline scale: matches previewScale = previewW/400
 
       const canvas = document.createElement("canvas");
       canvas.width = CW;
@@ -305,6 +328,7 @@ export default function Home() {
       const waveRelH = [0.4, 0.7, 0.9, 0.5, 0.8, 0.6, 0.9, 0.7, 0.4, 0.8, 0.5, 0.7];
 
       const drawFrame = (text: string, phase: number) => {
+        // ── Background ──────────────────────────────────────────────────────────
         ctx.fillStyle = "#000";
         ctx.fillRect(0, 0, CW, CH);
 
@@ -312,14 +336,32 @@ export default function Home() {
           ctx.save();
           if (bgBlur > 0) ctx.filter = `blur(${bgBlur * SC}px)`;
           const s = Math.max(CW / (bgEl.naturalWidth || 1), CH / (bgEl.naturalHeight || 1));
-          ctx.drawImage(bgEl, (CW - bgEl.naturalWidth * s) / 2, (CH - bgEl.naturalHeight * s) / 2,
-            bgEl.naturalWidth * s, bgEl.naturalHeight * s);
+          ctx.drawImage(
+            bgEl,
+            (CW - bgEl.naturalWidth * s) / 2,
+            (CH - bgEl.naturalHeight * s) / 2,
+            bgEl.naturalWidth * s,
+            bgEl.naturalHeight * s
+          );
+          ctx.filter = "none";
           ctx.restore();
         }
 
+        // ── Dim overlay (bgDim) ──────────────────────────────────────────────
         ctx.fillStyle = `rgba(0,0,0,${bgDim})`;
         ctx.fillRect(0, 0, CW, CH);
 
+        // ── Gradient overlay (matches CSS: from-black/20 via-transparent to-black/60) ──
+        const grad = ctx.createLinearGradient(0, 0, 0, CH);
+        grad.addColorStop(0, "rgba(0,0,0,0.20)");
+        grad.addColorStop(0.5, "rgba(0,0,0,0.00)");
+        grad.addColorStop(1, "rgba(0,0,0,0.60)");
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, CW, CH);
+
+        // ── Ayah Text ────────────────────────────────────────────────────────
+        // Positions are purely % of canvas — identical math to CSS preview.
+        // Sizes (font, shadow) are scaled by SC = exportWidth / previewWidth.
         const fs = ayahFontSize * SC;
         ctx.save();
         ctx.font = `500 ${fs}px Tajawal, sans-serif`;
@@ -328,8 +370,12 @@ export default function Home() {
         ctx.shadowBlur = 10 * SC;
         ctx.textAlign = "center";
         ctx.direction = "rtl";
+
+        // xPosition% → same as CSS `left: xPosition%`
         const tx = (xPosition / 100) * CW;
-        const ty = CH - (yPosition / 100) * CH;
+        // yPosition% → same as CSS `bottom: yPosition%`
+        // The BOTTOM edge of the text container sits at this Y from top:
+        const textBlockBottom = CH - (yPosition / 100) * CH;
 
         const words = text.split(" ");
         const lines: string[] = [];
@@ -342,78 +388,133 @@ export default function Home() {
         }
         if (cur) lines.push(cur);
 
-        const lh = fs * 1.5;
-        let sy = ty - ((lines.length - 1) * lh) / 2;
+        const lh = fs * 1.6; // matches CSS leading-[1.6]
+        // The preview div bottom-anchors at textBlockBottom and grows upward.
+        // Start first baseline one line-height above the block bottom:
+        const totalTextH = lines.length * lh;
+        // We center the block around textBlockBottom (mimicking the -translate-x/y flex centering)
+        let sy = textBlockBottom - totalTextH + lh * 0.8;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 4 * SC;
         lines.forEach(ln => {
           ctx.fillText(ln, tx, sy);
           sy += lh;
         });
         ctx.restore();
 
+        // ── Surah Name ───────────────────────────────────────────────────────
+        // Preview: absolute div with bottom:surahYPosition%, left:surahXPosition%.
+        // The div grows UPWARD from that bottom edge (flex-col, items-center).
+        // fillText y = text BASELINE ≈ top-of-text + fontSize.
+        // So: baseline = (CH - surahYPosition%*CH) - sfs * (lines above)
+        // First line baseline = containerBottom - sfs*0.15 (ascender gap)
         if (showSurahName) {
           const sfs = surahFontSize * SC;
+          const transFS = sfs * 0.7; // matches CSS `text-xs` ≈ 70% of surah size
           ctx.save();
-          ctx.textAlign = "center"; ctx.direction = "rtl";
+          ctx.textAlign = "center";
+          ctx.direction = "rtl";
           const sx = (surahXPosition / 100) * CW;
-          const sbase = CH - (surahYPosition / 100) * CH;
+          // containerBottom = CH - surahYPosition%*CH  (bottom: surahYPosition%)
+          const containerBottom = CH - (surahYPosition / 100) * CH;
+          // The div contains: h2 (sfs) + mt-1 gap + p (transFS)
+          const mt1 = 4 * SC; // mt-1 ≈ 4px scaled
+          const totalSurahBlockH = sfs + mt1 + transFS;
+          // Bottom of block = containerBottom; top of block = containerBottom - totalSurahBlockH
+          // h2 baseline ≈ top of block + sfs * 0.85 (typical ascender ratio)
+          const h2Baseline = containerBottom - totalSurahBlockH + sfs * 0.85;
           ctx.font = `bold ${sfs}px Tajawal, sans-serif`;
           ctx.fillStyle = surahColor;
-          ctx.shadowColor = surahShadowColor; ctx.shadowBlur = 5 * SC;
-          ctx.fillText(`سورة ${selectedSurah.name.ar}`, sx, sbase);
-          ctx.font = `${sfs * 0.7}px Tajawal, sans-serif`;
+          ctx.shadowColor = surahShadowColor;
+          ctx.shadowBlur = 5 * SC;
+          ctx.shadowOffsetX = 0;
+          ctx.shadowOffsetY = 2 * SC;
+          ctx.fillText(`سورة ${selectedSurah.name.ar}`, sx, h2Baseline);
+          // Transliteration baseline sits below h2 baseline by (sfs - sfs*0.85) descender + mt1 + transFS*0.85
+          const transBaseline = h2Baseline + (sfs * 0.15) + mt1 + transFS * 0.85;
+          ctx.font = `${transFS}px Tajawal, sans-serif`;
           ctx.globalAlpha = 0.8;
-          ctx.fillText(selectedSurah.name.transliteration, sx, sbase + sfs + 5 * SC);
+          ctx.fillText(selectedSurah.name.transliteration, sx, transBaseline);
           ctx.restore();
         }
 
+        // ── Audio Waveform ────────────────────────────────────────────────────
         if (showWave) {
-          const bW = 3 * SC; // Match UI w-[3px]
-          const bGap = 4 * SC; // Match UI gap-1 (4px)
+          // Mirror preview exactly:
+          //   CSS: bottom: waveY%,  left: waveX%,  height: waveHeight px,  -translate-x-1/2
+          //   bars: w-[3px] gap-1,  items-end (bars bottom-anchored inside container)
+          //   animation: wave-bounce scaleY from center
+          //
+          // SC = exportWidth / previewWidth  →  scales every px value proportionally.
+          const bW = 3 * SC;          // w-[3px]
+          const bGap = 4 * SC;        // gap-1 = 4px
           const bStep = bW + bGap;
-          const totalWW = (waveRelH.length - 1) * bStep + bW;
-          const wbx = (waveX / 100) * CW - totalWW / 2;
-          const wby = CH - (waveY / 100) * CH;
+          const numBars = waveRelH.length;
+          const totalWW = (numBars - 1) * bStep + bW;
+
+          // Horizontal centre = waveX% of canvas width  (CSS: left:waveX% + -translateX-1/2)
+          const waveGroupLeft = (waveX / 100) * CW - totalWW / 2;
+
+          // Bottom edge of the wave container:
+          // CSS `bottom: waveY%`  →  y from top = CH - (waveY/100)*CH
+          const containerBottom = CH - (waveY / 100) * CH;
+
+          // Container height uses the same px value as preview, scaled by SC.
+          // (In preview: height = waveHeight px at previewW width;
+          //  in export: height = waveHeight * SC px at CW width — same visual proportion.)
+          const containerH = waveHeight * SC;
+
           ctx.save();
           waveRelH.forEach((rh, idx) => {
-            // Synchronized with CSS 0.8s animation (wave-bounce in globals.css)
-            // CSS: scaleY(1) (from) to scaleY(2.2) (to), alternate, 0.8s duration
-            // This means a full period (up and back) of p = 1.6s
-            // Note: CSS scaleY without transform-origin scales from center.
-            // Visually, the growth upwards is only half of the total scale increase.
-            // Reduced to 1.5 max based on user request.
-            const ph = (phase + idx * 0.196) % (Math.PI * 2); 
-            const scaleFactor = 1.25 + 0.25 * Math.sin(ph); // Ranges from 1.0 to 1.5
-            const bH = rh * waveHeight * SC * scaleFactor;
-            
+            const delay = idx * (2 * Math.PI * 0.05 / 1.6);
+            const ph = (phase + delay) % (Math.PI * 2);
+            const sinVal = (Math.sin(ph) + 1) / 2; // 0..1
+            const scaleFactor = 1 + sinVal * 1.2;   // 1.0..2.2  (matches CSS wave-bounce)
+
+            // items-end → bar bottom is flush with containerBottom
+            const naturalH = rh * containerH;
+            // wave-bounce scaleY is applied from transform-origin: center
+            const scaledH = naturalH * scaleFactor;
+            // bar center Y = containerBottom - naturalH/2
+            const barCenterY = containerBottom - naturalH / 2;
+            const barTop = barCenterY - scaledH / 2;
+
             ctx.fillStyle = waveColor;
-            ctx.shadowColor = waveColor;
+            ctx.shadowColor = waveColor + "60";
             ctx.shadowBlur = 10 * SC;
             ctx.globalAlpha = 0.85;
 
-            // Draw with rounded ends to match UI
+            const bx = waveGroupLeft + idx * bStep;
             ctx.beginPath();
-            const bx = wbx + idx * bStep;
             if ((ctx as any).roundRect) {
-              (ctx as any).roundRect(bx, wby - bH, bW, bH, bW / 2);
+              (ctx as any).roundRect(bx, barTop, bW, scaledH, bW / 2);
             } else {
-              ctx.rect(bx, wby - bH, bW, bH); // Fallback
+              ctx.rect(bx, barTop, bW, scaledH);
             }
             ctx.fill();
           });
           ctx.restore();
         }
 
+        // ── Watermark ─────────────────────────────────────────────────────────
         if (showWatermark) {
-          ctx.save(); ctx.globalAlpha = watermarkOpacity;
+          ctx.save();
+          ctx.globalAlpha = watermarkOpacity;
+          // Preview: right: watermarkX%, top: watermarkY%
           const wx = CW - (watermarkX / 100) * CW;
           const wy = (watermarkY / 100) * CH;
           const wmS = watermarkSize * SC;
           if (watermarkMode === "image" && wmEl) {
             const wh = (wmS / (wmEl.naturalWidth || 100)) * (wmEl.naturalHeight || 100);
+            // Right-aligned: image drawn ending at wx
             ctx.drawImage(wmEl, wx - wmS, wy, wmS, wh);
           } else if (watermarkMode === "text" && watermarkText) {
             ctx.font = `bold ${wmS}px Tajawal, sans-serif`;
-            ctx.fillStyle = watermarkTextColor; ctx.textAlign = "right";
+            ctx.fillStyle = watermarkTextColor;
+            ctx.textAlign = "right";
+            ctx.shadowColor = "rgba(0,0,0,0.5)";
+            ctx.shadowBlur = 2 * SC;
+            ctx.shadowOffsetY = 1 * SC;
             ctx.fillText(watermarkText, wx, wy + wmS);
           }
           ctx.restore();
@@ -446,17 +547,29 @@ export default function Home() {
         }
 
         const dur = audioBuffer?.duration ?? 4;
-        
-        const frameInterval = setInterval(() => {
+
+        // Use requestAnimationFrame for smooth, GPU-synced wave animation.
+        // phase is driven by real elapsed time (not frame count) so speed is
+        // independent of actual frame rate — no jitter, no drift.
+        let rafId = -1;
+        let rafRunning = true;
+        let lastTs = -1;
+        const animate = (ts: number) => {
+          if (!rafRunning) return;
+          if (lastTs < 0) lastTs = ts;
+          const dt = (ts - lastTs) / 1000; // seconds since last frame
+          lastTs = ts;
+          // wave-bounce period = 1.6s → angular velocity = 2π/1.6 rad/s
+          phase += dt * (2 * Math.PI / 1.6);
           drawFrame(ayah.text, phase);
-          phase += 0.063; // 1.6s period (0.8s alternate) at ~60fps
-        }, 16.6); // Align with 60fps better
+          rafId = requestAnimationFrame(animate);
+        };
+        rafId = requestAnimationFrame(animate);
 
         if (audioBuffer) {
           const src = audioCtx.createBufferSource();
           src.buffer = audioBuffer;
           src.connect(exportGain);
-          // Silent export - no connection to audioCtx.destination
           src.start();
 
           const startT = audioCtx.currentTime;
@@ -464,32 +577,25 @@ export default function Home() {
             const tick = setInterval(() => {
               const elapsed = audioCtx.currentTime - startT;
               setExportProgress(Math.round(((i + Math.min(elapsed / dur, 1)) / totalAyahs) * 100));
-              if (elapsed >= dur) {
-                clearInterval(tick);
-                res();
-              }
+              if (elapsed >= dur) { clearInterval(tick); res(); }
             }, 100);
-            src.onended = () => {
-              clearInterval(tick);
-              res();
-            };
+            src.onended = () => { clearInterval(tick); res(); };
           });
         } else {
-          // Fallback if no audio
+          // Fallback: no audio → run for 4 seconds
           const startT = Date.now();
           await new Promise<void>(res => {
             const tick = setInterval(() => {
               const elapsed = (Date.now() - startT) / 1000;
               setExportProgress(Math.round(((i + Math.min(elapsed / 4, 1)) / totalAyahs) * 100));
-              if (elapsed >= 4) {
-                clearInterval(tick);
-                res();
-              }
+              if (elapsed >= 4) { clearInterval(tick); res(); }
             }, 100);
           });
         }
 
-        clearInterval(frameInterval);
+        // Stop the rAF loop for this ayah
+        rafRunning = false;
+        if (rafId !== -1) cancelAnimationFrame(rafId);
       }
 
       setExportProgress(100);
@@ -678,7 +784,7 @@ export default function Home() {
                         key={ayah.number}
                         className="text-balance font-medium leading-[1.6] transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)]"
                         style={{
-                          fontSize: `${ayahFontSize}px`,
+                          fontSize: `${ayahFontSize * previewScale}px`,
                           color: ayahColor,
                           textShadow: `0 4px 12px ${ayahShadowColor}80`,
                           animation: "fade-slide-up 0.8s forwards"
@@ -706,7 +812,7 @@ export default function Home() {
                   <h2
                     className="font-bold leading-tight"
                     style={{
-                      fontSize: `${surahFontSize}px`,
+                      fontSize: `${surahFontSize * previewScale}px`,
                       color: surahColor,
                       textShadow: `0 2px 4px ${surahShadowColor}`
                     }}
@@ -727,18 +833,20 @@ export default function Home() {
 
               {showWave && (
                 <div
-                  className="absolute z-10 flex -translate-x-1/2 items-end justify-center gap-1 transition-all duration-300 ease-out"
+                  className="absolute z-10 flex -translate-x-1/2 items-end justify-center transition-all duration-300 ease-out"
                   style={{
                     bottom: `${waveY}%`,
                     left: `${waveX}%`,
-                    height: `${waveHeight}px`
+                    height: `${waveHeight * previewScale}px`,
+                    gap: `${4 * previewScale}px`
                   }}
                 >
                   {[0.4, 0.7, 0.9, 0.5, 0.8, 0.6, 0.9, 0.7, 0.4, 0.8, 0.5, 0.7].map((h, i) => (
                     <div
                       key={i}
-                      className="w-[3px] rounded-full opacity-80"
+                      className="rounded-full opacity-80"
                       style={{
+                        width: `${3 * previewScale}px`,
                         height: `${h * 100}%`,
                         backgroundColor: waveColor,
                         boxShadow: `0 0 10px ${waveColor}60`,
@@ -763,12 +871,12 @@ export default function Home() {
                     <img
                       src={watermarkImage}
                       alt="Watermark"
-                      style={{ width: `${watermarkSize}px`, height: "auto" }}
+                      style={{ width: `${watermarkSize * previewScale}px`, height: "auto" }}
                     />
                   ) : watermarkMode === "text" ? (
                     <span
                       style={{
-                        fontSize: `${watermarkSize}px`,
+                        fontSize: `${watermarkSize * previewScale}px`,
                         color: watermarkTextColor,
                         fontWeight: "bold",
                         textShadow: "0 1px 2px rgba(0,0,0,0.5)"
@@ -1125,7 +1233,7 @@ export default function Home() {
                               </div>
                               <div>
                                 <div className="mb-2 text-[10px] font-bold text-[#81899a]">الارتفاع</div>
-                                <input type="range" min="20" max="150" value={waveHeight} onChange={(e) => setWaveHeight(Number(e.target.value))} className="w-full h-1" />
+                                <input type="range" min="5" max="150" value={waveHeight} onChange={(e) => setWaveHeight(Number(e.target.value))} className="w-full h-1" />
                               </div>
                             </div>
                             <div className="grid grid-cols-2 gap-3">
