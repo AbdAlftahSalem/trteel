@@ -8,9 +8,6 @@ import bg2 from "@/assets/images/2.svg";
 import bg3 from "@/assets/images/3.svg";
 import bg4 from "@/assets/images/4.svg";
 import bg5 from "@/assets/images/5.svg";
-import bg6 from "@/assets/images/bg6.png";
-import bg7 from "@/assets/images/bg7.png";
-import bg8 from "@/assets/images/bg8.png";
 import surahsData from "@/assets/quran_surahs.json";
 import quranDataRaw from "@/assets/quran.json";
 import recitersDataRaw from "@/assets/reciters.json";
@@ -227,11 +224,12 @@ export default function Home() {
 
       await document.fonts.ready;
 
-      // ── Codec Selection ──────────────────────────────────────────────────────
+      // ── Codec Selection (prefer highest quality) ─────────────────────────────
       const types = [
-        "video/webm",
-        "video/webm;codecs=vp8,opus",
+        "video/webm;codecs=vp9,opus",
         "video/webm;codecs=h264,opus",
+        "video/webm;codecs=vp8,opus",
+        "video/webm",
         "video/mp4"
       ];
       const mimeType = types.find(t => MediaRecorder.isTypeSupported(t)) || "video/webm";
@@ -254,7 +252,7 @@ export default function Home() {
       ctx.fillStyle = "#000";
       ctx.fillRect(0, 0, CW, CH);
 
-      const videoStream = canvas.captureStream(30);
+      const videoStream = canvas.captureStream(60);
 
       const vTracks = videoStream.getVideoTracks();
       const aTracks = audioDest.stream.getAudioTracks();
@@ -272,8 +270,8 @@ export default function Home() {
       const chunks: Blob[] = [];
       const recorder = new MediaRecorder(combined, {
         mimeType,
-        videoBitsPerSecond: 2_500_000,
-        audioBitsPerSecond: 128_000,
+        videoBitsPerSecond: 16_000_000,
+        audioBitsPerSecond: 320_000,
       });
 
       recorder.ondataavailable = (e) => {
@@ -369,16 +367,24 @@ export default function Home() {
         }
 
         if (showWave) {
-          const bW = Math.max(4, CW * 0.005);
-          const gap = bW * 1.8; // Match UI gap more closely
-          const totalWW = waveRelH.length * (bW + gap);
+          const bW = 3 * SC; // Match UI w-[3px]
+          const bGap = 4 * SC; // Match UI gap-1 (4px)
+          const bStep = bW + bGap;
+          const totalWW = (waveRelH.length - 1) * bStep + bW;
           const wbx = (waveX / 100) * CW - totalWW / 2;
           const wby = CH - (waveY / 100) * CH;
           ctx.save();
           waveRelH.forEach((rh, idx) => {
-            // Synchronized with CSS 0.8s infinite alternate animation
-            const ph = (phase + idx * 0.35) % (Math.PI * 2);
-            const bH = rh * waveHeight * SC * (0.55 + 0.45 * Math.sin(ph));
+            // Synchronized with CSS 0.8s animation (wave-bounce in globals.css)
+            // CSS: scaleY(1) (from) to scaleY(2.2) (to), alternate, 0.8s duration
+            // This means a full period (up and back) of p = 1.6s
+            // Note: CSS scaleY without transform-origin scales from center.
+            // Visually, the growth upwards is only half of the total scale increase.
+            // Reduced to 1.5 max based on user request.
+            const ph = (phase + idx * 0.196) % (Math.PI * 2); 
+            const scaleFactor = 1.25 + 0.25 * Math.sin(ph); // Ranges from 1.0 to 1.5
+            const bH = rh * waveHeight * SC * scaleFactor;
+            
             ctx.fillStyle = waveColor;
             ctx.shadowColor = waveColor;
             ctx.shadowBlur = 10 * SC;
@@ -386,10 +392,11 @@ export default function Home() {
 
             // Draw with rounded ends to match UI
             ctx.beginPath();
+            const bx = wbx + idx * bStep;
             if ((ctx as any).roundRect) {
-              (ctx as any).roundRect(wbx + idx * gap, wby - bH, bW, bH, bW / 2);
+              (ctx as any).roundRect(bx, wby - bH, bW, bH, bW / 2);
             } else {
-              ctx.rect(wbx + idx * gap, wby - bH, bW, bH); // Fallback
+              ctx.rect(bx, wby - bH, bW, bH); // Fallback
             }
             ctx.fill();
           });
@@ -415,8 +422,9 @@ export default function Home() {
 
       // Draw initial frame before starting
       drawFrame(selectedAyahs[0].text, 0);
-      recorder.start(1000);
+      recorder.start(200);
 
+      let phase = 0;
       const totalAyahs = selectedAyahs.length;
       for (let i = 0; i < totalAyahs; i++) {
         const ayah = selectedAyahs[i];
@@ -438,12 +446,11 @@ export default function Home() {
         }
 
         const dur = audioBuffer?.duration ?? 4;
-        let phase = 0;
-
+        
         const frameInterval = setInterval(() => {
           drawFrame(ayah.text, phase);
-          phase += 0.25;
-        }, 33);
+          phase += 0.063; // 1.6s period (0.8s alternate) at ~60fps
+        }, 16.6); // Align with 60fps better
 
         if (audioBuffer) {
           const src = audioCtx.createBufferSource();
@@ -951,7 +958,7 @@ export default function Home() {
                     <div className="overflow-hidden">
                       <div className="px-5 pb-5 pt-1">
                         <div className="grid grid-cols-3 gap-3">
-                          {[bg1, bg2, bg3, bg4, bg5, bg6, bg7, bg8].map((bg, idx) => (
+                          {[bg1, bg2, bg3, bg4, bg5].map((bg, idx) => (
                             <button
                               key={idx}
                               onClick={() => setBgImage(bg)}
@@ -1253,7 +1260,7 @@ export default function Home() {
                   >
                     <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-1000 group-hover:translate-x-full" />
                     <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
-                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
                     </svg>
                   </div>
                 </div>
