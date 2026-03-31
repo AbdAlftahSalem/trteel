@@ -1,0 +1,277 @@
+import Image from "next/image";
+import { Play, Pause, SkipForward, SkipBack } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { EditorState, Ayah, Surah } from "@/types";
+
+export interface VideoPreviewProps {
+  state: EditorState;
+  selectedAyahs: Ayah[];
+  selectedSurah: Surah;
+  maxAyah: number;
+  currentAyahIndex: number;
+  setCurrentAyahIndex: React.Dispatch<React.SetStateAction<number>>;
+  isPlaying: boolean;
+  togglePlayback: () => void;
+  audioRef: React.MutableRefObject<HTMLAudioElement | null>;
+  handleAudioEnded: () => void;
+}
+
+export function VideoPreview({
+  state,
+  selectedAyahs,
+  selectedSurah,
+  maxAyah,
+  currentAyahIndex,
+  setCurrentAyahIndex,
+  isPlaying,
+  togglePlayback,
+  audioRef,
+  handleAudioEnded,
+}: VideoPreviewProps) {
+  const previewRef = useRef<HTMLDivElement | null>(null);
+  const [previewWidth, setPreviewWidth] = useState<number>(400);
+  const previewScale = previewWidth / 400;
+
+  useEffect(() => {
+    const el = previewRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      const w = entries[0]?.contentRect.width;
+      if (w && w > 0) setPreviewWidth(w);
+    });
+    ro.observe(el);
+    if (el.clientWidth > 0) setPreviewWidth(el.clientWidth);
+    return () => ro.disconnect();
+  }, []);
+
+  const {
+    aspectRatio,
+    bgImage,
+    bgBlur,
+    bgDim,
+    showWave,
+    waveColor,
+    waveHeight,
+    waveX,
+    waveY,
+    showWatermark,
+    watermarkMode,
+    watermarkImage,
+    watermarkText,
+    watermarkTextColor,
+    watermarkSize,
+    watermarkOpacity,
+    watermarkX,
+    watermarkY,
+    ayahFontSize,
+    ayahColor,
+    ayahShadowColor,
+    yPosition,
+    xPosition,
+    showSurahName,
+    surahFontSize,
+    surahColor,
+    surahShadowColor,
+    surahYPosition,
+    surahXPosition,
+  } = state;
+
+  return (
+    <div
+      ref={previewRef}
+      className="relative h-full max-h-[min(85vh,720px)] w-auto max-w-full overflow-hidden rounded-[34px] border-[6px] border-[#20252e] shadow-[0_30px_80px_rgba(10,16,28,0.35)] transition-all duration-500 ease-in-out"
+      style={{ aspectRatio }}
+    >
+      <Image
+        src={bgImage}
+        alt="Quran video preview"
+        fill
+        priority
+        loading="eager"
+        className={`object-cover transition-transform duration-[10000ms] ease-linear ${
+          isPlaying ? "scale-110" : "scale-100"
+        }`}
+        style={{ filter: `blur(${bgBlur}px)` }}
+      />
+      <div
+        className={`absolute inset-0 transition-all duration-500`}
+        style={{ backgroundColor: `rgba(0, 0, 0, ${bgDim})` }}
+      />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/60 pointer-events-none" />
+
+      <div className="absolute inset-0 z-30 group/player">
+        <div className="absolute inset-0 cursor-pointer pointer-events-auto" onClick={togglePlayback} />
+
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className={`transition-all duration-300 ${isPlaying ? "opacity-0 scale-150" : "opacity-100 scale-100"}`}>
+            {!isPlaying && (
+              <div className="flex h-24 w-24 items-center justify-center rounded-full bg-black/40 backdrop-blur-xl border border-white/20 text-white shadow-2xl">
+                <Play fill="white" size={48} className="translate-x-1" />
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="absolute bottom-0 left-0 right-0 p-6 pointer-events-none opacity-0 group-hover/player:opacity-100 transition-all duration-500 translate-y-4 group-hover/player:translate-y-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-4 pointer-events-auto">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  currentAyahIndex > 0 && setCurrentAyahIndex((prev) => prev - 1);
+                }}
+                disabled={currentAyahIndex === 0}
+                className="h-10 w-10 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-all disabled:opacity-30"
+              >
+                <SkipForward size={20} />
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  togglePlayback();
+                }}
+                className="h-12 w-12 flex items-center justify-center rounded-full bg-white text-[#1677ff] hover:scale-110 transition-all shadow-lg"
+              >
+                {isPlaying ? <Pause fill="currentColor" size={24} /> : <Play fill="currentColor" size={24} className="translate-x-0.5" />}
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  currentAyahIndex < selectedAyahs.length - 1 && setCurrentAyahIndex((prev) => prev + 1);
+                }}
+                disabled={currentAyahIndex === selectedAyahs.length - 1}
+                className="h-10 w-10 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-all disabled:opacity-30"
+              >
+                <SkipBack size={20} />
+              </button>
+            </div>
+            <div className="text-right pointer-events-none">
+              <div className="text-[10px] font-bold uppercase tracking-widest text-[#1677ff] mb-1">الآن يعرض</div>
+              <div className="text-xs font-bold text-white">
+                آية {selectedAyahs[currentAyahIndex]?.numberInSurah} من {maxAyah}
+              </div>
+            </div>
+          </div>
+          <div className="relative h-1.5 w-full rounded-full bg-white/20 overflow-hidden group/bar pointer-events-auto cursor-pointer">
+            <div
+              className={`absolute top-0 right-0 h-full bg-[#1677ff] transition-all duration-300 shadow-[0_0_15px_rgba(22,119,255,0.8)]`}
+              style={{ width: `${((currentAyahIndex + 1) / (selectedAyahs.length || 1)) * 100}%` }}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div
+        className="absolute z-10 flex w-[85%] -translate-x-1/2 flex-col items-center justify-center text-center text-white transition-all duration-300 ease-out"
+        style={{ bottom: `${yPosition}%`, left: `${xPosition}%` }}
+        dir="rtl"
+      >
+        <div className="max-h-[80%] w-full px-6 text-center">
+          {selectedAyahs.map(
+            (ayah, index) =>
+              index === currentAyahIndex && (
+                <p
+                  key={ayah.number}
+                  className="text-balance font-medium leading-[1.6] transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)]"
+                  style={{
+                    fontSize: `${ayahFontSize * previewScale}px`,
+                    color: ayahColor,
+                    textShadow: `0 4px 12px ${ayahShadowColor}80`,
+                    animation: "fade-slide-up 0.8s forwards",
+                  }}
+                >
+                  {ayah.text}
+                </p>
+              )
+          )}
+        </div>
+        <audio ref={audioRef} onEnded={handleAudioEnded} className="hidden" />
+      </div>
+
+      {showSurahName && (
+        <div
+          className="absolute z-10 -translate-x-1/2 flex flex-col items-center text-center text-white transition-all duration-300 ease-out"
+          style={{ bottom: `${surahYPosition}%`, left: `${surahXPosition}%` }}
+          dir="rtl"
+        >
+          <h2
+            className="font-bold leading-tight"
+            style={{
+              fontSize: `${surahFontSize * previewScale}px`,
+              color: surahColor,
+              textShadow: `0 2px 4px ${surahShadowColor}`,
+            }}
+          >
+            سورة {selectedSurah.name.ar}
+          </h2>
+          <p
+            className="mt-1 text-xs font-medium opacity-80"
+            style={{
+              color: surahColor,
+              textShadow: `0 1px 2px ${surahShadowColor}`,
+            }}
+          >
+            {selectedSurah.name.transliteration}
+          </p>
+        </div>
+      )}
+
+      {showWave && (
+        <div
+          className="absolute z-10 flex -translate-x-1/2 items-end justify-center transition-all duration-300 ease-out"
+          style={{
+            bottom: `${waveY}%`,
+            left: `${waveX}%`,
+            height: `${waveHeight * previewScale}px`,
+            gap: `${4 * previewScale}px`,
+          }}
+        >
+          {[0.4, 0.7, 0.9, 0.5, 0.8, 0.6, 0.9, 0.7, 0.4, 0.8, 0.5, 0.7].map((h, i) => (
+            <div
+              key={i}
+              className="rounded-full opacity-80"
+              style={{
+                width: `${3 * previewScale}px`,
+                height: `${h * 100}%`,
+                backgroundColor: waveColor,
+                boxShadow: `0 0 10px ${waveColor}60`,
+                animation: `wave-bounce 0.8s ease-in-out infinite alternate`,
+                animationDelay: `${i * 0.05}s`,
+              }}
+            />
+          ))}
+        </div>
+      )}
+
+      {showWatermark && (
+        <div
+          className="absolute z-20 transition-all duration-300 ease-out"
+          style={{
+            top: `${watermarkY}%`,
+            right: `${watermarkX}%`,
+            opacity: watermarkOpacity,
+          }}
+        >
+          {watermarkMode === "image" && watermarkImage ? (
+            <img
+              src={watermarkImage}
+              alt="Watermark"
+              style={{ width: `${watermarkSize * previewScale}px`, height: "auto" }}
+            />
+          ) : watermarkMode === "text" ? (
+            <span
+              style={{
+                fontSize: `${watermarkSize * previewScale}px`,
+                color: watermarkTextColor,
+                fontWeight: "bold",
+                textShadow: "0 1px 2px rgba(0,0,0,0.5)",
+              }}
+            >
+              {watermarkText}
+            </span>
+          ) : null}
+        </div>
+      )}
+    </div>
+  );
+}
