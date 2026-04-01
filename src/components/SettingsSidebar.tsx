@@ -1209,7 +1209,7 @@ export function SettingsSidebar({
             <div className="flex flex-col items-center">
               <div className="flex items-center gap-3">
                 <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                <span>جاري تصدير الفيديو... ({exportProgress}%)</span>
+                <span>جاري تصدير الفيديو... ({Math.round(exportProgress)}%)</span>
               </div>
               <div className="mt-2 h-1 w-48 rounded-full bg-white/20">
                 <div
