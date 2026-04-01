@@ -80,4 +80,10 @@ export type EditorState = {
   exportQuality: "low" | "medium" | "high";
   exportPreset: "story" | "post" | "tiktok" | "youtube" | "whatsapp";
   showSafeArea: boolean;
+  showAyahGlassEffect: boolean;
+  ayahGlassBlur: number;
+  ayahGlassOpacity: number;
+  ayahGlassPadding: number;
+  ayahGlassBorderRadius: number;
+  ayahGlassGlow: boolean;
 };

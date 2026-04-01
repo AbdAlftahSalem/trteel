@@ -45,6 +45,12 @@ export function useEditorState() {
     exportQuality: "medium",
     exportPreset: "story",
     showSafeArea: false,
+    showAyahGlassEffect: false,
+    ayahGlassBlur: 10,
+    ayahGlassOpacity: 0.15,
+    ayahGlassPadding: 20,
+    ayahGlassBorderRadius: 24,
+    ayahGlassGlow: true,
   });
 
   const updateState = useCallback(

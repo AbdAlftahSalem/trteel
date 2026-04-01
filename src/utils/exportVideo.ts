@@ -113,6 +113,12 @@ export async function exportVideo({
     bgType,
     bgVideo,
     bgVideoRange,
+    showAyahGlassEffect,
+    ayahGlassBlur,
+    ayahGlassOpacity,
+    ayahGlassPadding,
+    ayahGlassBorderRadius,
+    ayahGlassGlow,
   } = state;
 
   onProgress(1);
@@ -241,10 +247,69 @@ export async function exportVideo({
 
     const lh = fs * 1.6;
     const totalTextH = lines.length * lh;
+    
+    // Glass Effect Calculations
+    const pad = ayahGlassPadding * SC;
+    const radius = ayahGlassBorderRadius * SC;
+    const glassW = maxW + pad * 2;
+    const glassH = totalTextH + pad * 2;
+    const glassX = tx - glassW / 2;
+    const glassY = textBlockBottom - totalTextH - pad;
+
+    if (showAyahGlassEffect) {
+      ctx.save();
+      // 1. Shadow/Glow
+      if (ayahGlassGlow) {
+        ctx.shadowColor = `rgba(255, 255, 255, ${ayahGlassOpacity * 0.5})`;
+        ctx.shadowBlur = 20 * SC;
+      }
+      
+      // 2. Background Blur Simulation (Clip & Redraw background with blur)
+      // Note: Real-time blur on every frame can be slow, but for export it's acceptable.
+      ctx.beginPath();
+      if ((ctx as any).roundRect) {
+        (ctx as any).roundRect(glassX, glassY, glassW, glassH, radius);
+      } else {
+        ctx.rect(glassX, glassY, glassW, glassH);
+      }
+      ctx.clip();
+      
+      // Redraw background with extra blur
+      if (bgType === "video" && videoBG) {
+        ctx.filter = `blur(${(bgBlur + ayahGlassBlur) * SC}px)`;
+        const s = Math.max(CW / (videoBG.videoWidth || 1), CH / (videoBG.videoHeight || 1));
+        const w = videoBG.videoWidth * s;
+        const h = videoBG.videoHeight * s;
+        ctx.drawImage(videoBG, (CW - w) / 2, (CH - h) / 2, w, h);
+      } else if (bgEl) {
+        ctx.filter = `blur(${ayahGlassBlur * SC}px)`; // bgEl might already be blurred
+        const s = bgEl instanceof HTMLCanvasElement ? 1 : Math.max(CW / ((bgEl as HTMLImageElement).naturalWidth || 1), CH / ((bgEl as HTMLImageElement).naturalHeight || 1));
+        const w = "naturalWidth" in bgEl ? bgEl.naturalWidth * s : bgEl.width * s;
+        const h = "naturalHeight" in bgEl ? bgEl.naturalHeight * s : bgEl.height * s;
+        ctx.drawImage(bgEl, (CW - w) / 2, (CH - h) / 2, w, h);
+      }
+      ctx.filter = "none";
+      
+      // 3. Semi-transparent overlay
+      ctx.fillStyle = `rgba(255, 255, 255, ${ayahGlassOpacity})`;
+      ctx.fill();
+      
+      // 4. Border (the "shine" edge)
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.2)";
+      ctx.lineWidth = 1.5 * SC;
+      ctx.stroke();
+      
+      ctx.restore();
+    }
+
     let sy = textBlockBottom - totalTextH + lh * 0.8;
     ctx.shadowOffsetX = 0;
     ctx.shadowOffsetY = 4 * SC;
     lines.forEach((ln) => {
+      if (showAyahGlassEffect) {
+        ctx.shadowBlur = 0; // Remove shadow when glass is active for a cleaner look
+        ctx.shadowColor = "transparent";
+      }
       ctx.fillText(ln, tx, sy);
       sy += lh;
     });

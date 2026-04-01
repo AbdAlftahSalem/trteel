@@ -67,6 +67,12 @@ export function VideoPreview({
     surahYPosition,
     surahXPosition,
     showSafeArea,
+    showAyahGlassEffect,
+    ayahGlassBlur,
+    ayahGlassOpacity,
+    ayahGlassPadding,
+    ayahGlassBorderRadius,
+    ayahGlassGlow,
   } = state;
 
   useEffect(() => {
@@ -212,17 +218,33 @@ export function VideoPreview({
         style={{ bottom: `${yPosition}%`, left: `${xPosition}%` }}
         dir="rtl"
       >
-        <div className="max-h-[80%] w-full px-6 text-center">
+        <div 
+          className={`max-h-[80%] w-full text-center transition-all duration-500 ${
+            showAyahGlassEffect 
+              ? "border border-white/20 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)]" 
+              : ""
+          }`}
+          style={showAyahGlassEffect ? {
+            backdropFilter: `blur(${ayahGlassBlur}px)`,
+            backgroundColor: `rgba(255, 255, 255, ${ayahGlassOpacity})`,
+            padding: `${ayahGlassPadding * previewScale}px`,
+            borderRadius: `${ayahGlassBorderRadius * previewScale}px`,
+            boxShadow: ayahGlassGlow ? `0 0 20px rgba(255,255,255,${ayahGlassOpacity * 0.5})` : undefined,
+          } : {
+            padding: "0 24px"
+          }}
+        >
           {selectedAyahs.map(
             (ayah, index) =>
               index === currentAyahIndex && (
                 <p
                   key={ayah.number}
-                  className="text-balance font-medium leading-[1.6] transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)]"
+                  className="text-balance font-medium transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)]"
                   style={{
                     fontSize: `${ayahFontSize * previewScale}px`,
                     color: ayahColor,
-                    textShadow: `0 4px 12px ${ayahShadowColor}80`,
+                    lineHeight: 1.6,
+                    textShadow: showAyahGlassEffect ? "none" : `0 4px 12px ${ayahShadowColor}80`,
                     animation: "fade-slide-up 0.8s forwards",
                   }}
                 >

@@ -76,6 +76,12 @@ export function SettingsSidebar({
     exportQuality,
     exportPreset,
     showSafeArea,
+    showAyahGlassEffect,
+    ayahGlassBlur,
+    ayahGlassOpacity,
+    ayahGlassPadding,
+    ayahGlassBorderRadius,
+    ayahGlassGlow,
   } = state;
 
   const handleSurahChange = (nextSurahNumber: number) => {
@@ -522,6 +528,67 @@ export function SettingsSidebar({
                     className="h-1.5 w-full accent-[#1677ff]"
                   />
                 </div>
+              </div>
+              <div className="border-t border-[#ebedf2] dark:border-[#2f3545] pt-4">
+                <button
+                  type="button"
+                  onClick={() => updateState({ showAyahGlassEffect: !showAyahGlassEffect })}
+                  className="flex w-full items-center justify-between py-1 text-right"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs font-bold ${isDarkMode ? "text-white" : "text-[#1f2532]"}`}>تأثير الزجاج (Glassmorphism)</span>
+                    <span className="rounded bg-blue-500/10 px-1.5 py-0.5 text-[8px] font-bold text-blue-500">PREMIUM</span>
+                  </div>
+                  <div className={`relative h-5 w-9 rounded-full transition-colors ${showAyahGlassEffect ? "bg-[#1677ff]" : "bg-[#dde1ea] dark:bg-[#2f3545]"}`}>
+                    <span className={`absolute top-1 h-3 w-3 rounded-full bg-white transition-all ${showAyahGlassEffect ? "left-1" : "left-5"}`} />
+                  </div>
+                </button>
+                {showAyahGlassEffect && (
+                   <div className="mt-4 space-y-4 pr-2 border-r-2 border-blue-500/20">
+                     <div className="grid grid-cols-2 gap-3">
+                       <div>
+                         <div className="mb-2 flex items-center justify-between text-[10px] font-bold text-[#81899a]">
+                            <span>الضبابية (Blur)</span>
+                            <span className="text-[#1677ff]">{ayahGlassBlur}px</span>
+                         </div>
+                         <input type="range" min="0" max="40" value={ayahGlassBlur} onChange={(e) => updateState({ ayahGlassBlur: Number(e.target.value) })} className="w-full h-1 accent-[#1677ff]" />
+                       </div>
+                       <div>
+                         <div className="mb-2 flex items-center justify-between text-[10px] font-bold text-[#81899a]">
+                            <span>الشفافية</span>
+                            <span className="text-[#1677ff]">{Math.round(ayahGlassOpacity * 100)}%</span>
+                         </div>
+                         <input type="range" min="0" max="0.6" step="0.01" value={ayahGlassOpacity} onChange={(e) => updateState({ ayahGlassOpacity: Number(e.target.value) })} className="w-full h-1 accent-[#1677ff]" />
+                       </div>
+                     </div>
+                     <div className="grid grid-cols-2 gap-3">
+                       <div>
+                         <div className="mb-2 flex items-center justify-between text-[10px] font-bold text-[#81899a]">
+                            <span>الحواف (Radius)</span>
+                            <span className="text-[#1677ff]">{ayahGlassBorderRadius}px</span>
+                         </div>
+                         <input type="range" min="0" max="100" value={ayahGlassBorderRadius} onChange={(e) => updateState({ ayahGlassBorderRadius: Number(e.target.value) })} className="w-full h-1 accent-[#1677ff]" />
+                       </div>
+                       <div>
+                         <div className="mb-2 flex items-center justify-between text-[10px] font-bold text-[#81899a]">
+                            <span>الهوامش (Padding)</span>
+                            <span className="text-[#1677ff]">{ayahGlassPadding}px</span>
+                         </div>
+                         <input type="range" min="0" max="100" value={ayahGlassPadding} onChange={(e) => updateState({ ayahGlassPadding: Number(e.target.value) })} className="w-full h-1 accent-[#1677ff]" />
+                       </div>
+                     </div>
+                     <button
+                        type="button"
+                        onClick={() => updateState({ ayahGlassGlow: !ayahGlassGlow })}
+                        className="flex w-full items-center justify-between py-1 text-right opacity-80"
+                      >
+                        <span className={`text-[10px] font-bold ${isDarkMode ? "text-[#8a93a5]" : "text-[#5b6373]"}`}>وهج خفيف (Subtle Glow)</span>
+                        <div className={`relative h-4 w-7 rounded-full transition-colors ${ayahGlassGlow ? "bg-[#1677ff]" : "bg-[#dde1ea] dark:bg-[#2f3545]"}`}>
+                          <span className={`absolute top-0.5 h-3 w-3 rounded-full bg-white transition-all ${ayahGlassGlow ? "left-0.5" : "left-3.5"}`} />
+                        </div>
+                      </button>
+                   </div>
+                )}
               </div>
               <div className="border-t border-[#ebedf2] pt-4">
                 <button
