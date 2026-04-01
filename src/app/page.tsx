@@ -98,7 +98,7 @@ export default function Home() {
         <section
           className={`relative flex h-full w-full max-w-[1740px] flex-col-reverse overflow-hidden rounded-[28px] border shadow-[0_30px_90px_rgba(10,18,14,0.22)] transition-all duration-500 md:flex-row ${
             state.isDarkMode
-              ? "glass-panel border-[#204046] bg-gradient-to-br from-[#0e1a1d] to-[#0a1416]"
+              ? "glass-panel border-0 bg-gradient-to-br from-[#0e1a1d] to-[#0a1416]"
               : "glass-panel border-[#d4e1d8] bg-gradient-to-br from-[#f4fbf6] to-[#ebf2ee]"
           }`}
           style={{ animation: "intro-rise 500ms ease-out" }}

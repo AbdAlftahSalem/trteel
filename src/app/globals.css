@@ -79,7 +79,6 @@ input[type="range"]::-webkit-slider-thumb {
 .glass-panel {
   backdrop-filter: blur(14px);
   background: color-mix(in srgb, var(--surface) 86%, transparent);
-  border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
 }
 
 .custom-scrollbar::-webkit-scrollbar {
