@@ -86,4 +86,7 @@ export type EditorState = {
   ayahGlassPadding: number;
   ayahGlassBorderRadius: number;
   ayahGlassGlow: boolean;
+  enableWordSync: boolean;
+  wordSyncStyle: "karaoke" | "fade";
+  wordSyncActiveColor: string;
 };

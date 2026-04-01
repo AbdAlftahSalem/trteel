@@ -14,6 +14,7 @@ import {
   Film,
   UploadCloud,
   Scissors,
+  Zap,
 } from "lucide-react";
 import { SettingAccordion } from "./SettingAccordion";
 import { EditorState } from "@/types";
@@ -82,6 +83,9 @@ export function SettingsSidebar({
     ayahGlassPadding,
     ayahGlassBorderRadius,
     ayahGlassGlow,
+    enableWordSync,
+    wordSyncStyle,
+    wordSyncActiveColor,
   } = state;
 
   const handleSurahChange = (nextSurahNumber: number) => {
@@ -614,6 +618,86 @@ export function SettingsSidebar({
                   </div>
                 )}
               </div>
+            </div>
+          </SettingAccordion>
+
+          <SettingAccordion
+            id="kinetic"
+            title="تزامن الكلمات (Kinetic)"
+            icon={<Zap size={16} />}
+            isActive={activeAccordion === "kinetic"}
+            onToggle={setActiveAccordion}
+            isDarkMode={isDarkMode}
+          >
+            <div className="space-y-5">
+              <button
+                type="button"
+                onClick={() => updateState({ enableWordSync: !enableWordSync })}
+                className="flex w-full items-center justify-between py-1 text-right"
+              >
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs font-bold ${isDarkMode ? "text-white" : "text-[#1f2532]"}`}>تفعيل تزامن الكلمات</span>
+                  <span className="rounded bg-amber-500/10 px-1.5 py-0.5 text-[8px] font-bold text-amber-500">NEW</span>
+                </div>
+                <div className={`relative h-5 w-9 rounded-full transition-colors ${enableWordSync ? "bg-[#1677ff]" : "bg-[#dde1ea] dark:bg-[#2f3545]"}`}>
+                  <span className={`absolute top-1 h-3 w-3 rounded-full bg-white transition-all ${enableWordSync ? "left-1" : "left-5"}`} />
+                </div>
+              </button>
+
+              {enableWordSync && (
+                <div className="mt-4 space-y-5 pr-2 border-r-2 border-amber-500/20">
+                  <div>
+                    <label className={`mb-2 block text-[11px] font-bold ${isDarkMode ? "text-[#6e7786]" : "text-[#81899a]"}`}>
+                      نمط الحركة
+                    </label>
+                    <div className={`flex rounded-lg p-1 ${isDarkMode ? "bg-[#252c3c]" : "bg-[#ebedf2]"}`}>
+                      <button
+                        onClick={() => updateState({ wordSyncStyle: "karaoke" })}
+                        className={`flex-1 rounded-md py-1.5 text-[10px] font-bold transition-all ${
+                          wordSyncStyle === "karaoke"
+                            ? isDarkMode ? "bg-[#2f3545] text-white shadow-sm" : "bg-white text-[#1677ff] shadow-sm"
+                            : "text-[#5b6373] hover:opacity-80"
+                        }`}
+                      >
+                        كاريوكي (Highlight)
+                      </button>
+                      <button
+                        onClick={() => updateState({ wordSyncStyle: "fade" })}
+                        className={`flex-1 rounded-md py-1.5 text-[10px] font-bold transition-all ${
+                          wordSyncStyle === "fade"
+                            ? isDarkMode ? "bg-[#2f3545] text-white shadow-sm" : "bg-white text-[#1677ff] shadow-sm"
+                            : "text-[#5b6373] hover:opacity-80"
+                        }`}
+                      >
+                        ظهور تدريجي (Fade)
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="mb-2 text-[10px] font-bold text-[#81899a]">لون الكلمة النشطة</div>
+                    <div className={`flex items-center gap-2 h-11 px-3 border rounded-xl overflow-hidden ${
+                        isDarkMode ? "bg-[#252c3c] border-[#2f3545]" : "bg-white border-[#e3e7ef]"
+                    }`}>
+                      <input
+                        type="color"
+                        value={wordSyncActiveColor}
+                        onChange={(e) => updateState({ wordSyncActiveColor: e.target.value })}
+                        className="h-7 w-7 cursor-pointer border-2 border-white/20 rounded-full bg-transparent"
+                      />
+                      <div className="flex-1 text-[10px] font-mono font-bold uppercase truncate pr-2 text-left bg-black/5 dark:bg-white/5 py-1 px-2 rounded">
+                        {wordSyncActiveColor}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl bg-blue-500/5 p-3 border border-blue-500/10">
+                    <p className="text-[9px] font-bold text-[#1677ff] leading-relaxed">
+                      يتم توزيع زمن الآية على الكلمات بشكل ذكي بناءً على طول كل كلمة لضمان أفضل تزامن ممكن.
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           </SettingAccordion>
 

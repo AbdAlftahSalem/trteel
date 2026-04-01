@@ -73,7 +73,12 @@ export function VideoPreview({
     ayahGlassPadding,
     ayahGlassBorderRadius,
     ayahGlassGlow,
+    enableWordSync,
+    wordSyncStyle,
+    wordSyncActiveColor,
   } = state;
+
+  const [currentAudioTime, setCurrentAudioTime] = useState<number>(0);
 
   useEffect(() => {
     const el = previewRef.current;
@@ -114,6 +119,18 @@ export function VideoPreview({
     return () => video.removeEventListener("timeupdate", handleTimeUpdate);
   }, [bgVideo, bgVideoRange, bgType]);
 
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    
+    const handleUpdate = () => {
+      setCurrentAudioTime(audio.currentTime);
+    };
+    
+    audio.addEventListener("timeupdate", handleUpdate);
+    return () => audio.removeEventListener("timeupdate", handleUpdate);
+  }, [audioRef.current, currentAyahIndex]);
+
   return (
     <div
       ref={previewRef}
@@ -145,6 +162,25 @@ export function VideoPreview({
           />
         )
       )}
+      <style jsx global>{`
+        @keyframes word-pop {
+          0% { transform: scale(1); }
+          50% { transform: scale(1.08); }
+          100% { transform: scale(1.05); }
+        }
+        @keyframes word-highlight {
+          from { filter: brightness(1); }
+          to { filter: brightness(1.3) drop-shadow(0 0 8px ${wordSyncActiveColor}40); }
+        }
+        .active-word-karaoke {
+          display: inline-block;
+          animation: word-pop 0.4s cubic-bezier(0.23, 1, 0.32, 1) forwards !important;
+        }
+        .active-word-fade {
+          display: inline-block;
+          transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+        }
+      `}</style>
       <div
         className={`absolute inset-0 transition-all duration-500`}
         style={{ backgroundColor: `rgba(0, 0, 0, ${bgDim})` }}
@@ -235,22 +271,100 @@ export function VideoPreview({
           }}
         >
           {selectedAyahs.map(
-            (ayah, index) =>
-              index === currentAyahIndex && (
-                <p
+            (ayah, index) => {
+              if (index !== currentAyahIndex) return null;
+
+              if (!enableWordSync) {
+                return (
+                  <p
+                    key={ayah.number}
+                    className="text-balance font-medium transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)]"
+                    style={{
+                      fontSize: `${ayahFontSize * previewScale}px`,
+                      color: ayahColor,
+                      lineHeight: 1.6,
+                      textShadow: showAyahGlassEffect ? "none" : `0 4px 12px ${ayahShadowColor}80`,
+                      animation: "fade-slide-up 0.8s forwards",
+                    }}
+                  >
+                    {ayah.text}
+                  </p>
+                );
+              }
+
+              // Word Syncing Logic
+              const words = ayah.text.split(/\s+/).filter(w => w.length > 0);
+              const totalDuration = audioRef.current?.duration || 4; // Fallback to 4s
+              const wordLengths = words.map(w => w.length);
+              const totalLength = wordLengths.reduce((a, b) => a + b, 0);
+              let cumulativeTime = 0;
+
+              return (
+                <div 
                   key={ayah.number}
-                  className="text-balance font-medium transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)]"
+                  className="flex flex-wrap justify-center gap-x-[0.35em] text-balance font-medium"
                   style={{
                     fontSize: `${ayahFontSize * previewScale}px`,
-                    color: ayahColor,
                     lineHeight: 1.6,
-                    textShadow: showAyahGlassEffect ? "none" : `0 4px 12px ${ayahShadowColor}80`,
-                    animation: "fade-slide-up 0.8s forwards",
+                    direction: "rtl"
                   }}
                 >
-                  {ayah.text}
-                </p>
-              )
+                  {words.map((word, wIdx) => {
+                    const wordDuration = (wordLengths[wIdx] / totalLength) * totalDuration;
+                    const startTime = cumulativeTime;
+                    const endTime = cumulativeTime + wordDuration;
+                    cumulativeTime = endTime;
+
+                    const isActive = currentAudioTime >= startTime && currentAudioTime < endTime;
+                    const isFuture = currentAudioTime < startTime;
+                    const isPast = currentAudioTime >= endTime;
+
+                    const style: React.CSSProperties = {
+                      color: ayahColor,
+                      textShadow: showAyahGlassEffect ? "none" : `0 4px 12px ${ayahShadowColor}80`,
+                      transition: "all 0.6s cubic-bezier(0.23, 1, 0.32, 1)",
+                    };
+
+                    let className = "inline-block";
+
+                    if (wordSyncStyle === "karaoke") {
+                      if (isActive) {
+                        style.color = wordSyncActiveColor;
+                        style.fontWeight = "bold";
+                        style.textShadow = `0 0 20px ${wordSyncActiveColor}60`;
+                        className += " active-word-karaoke";
+                      } else if (isPast) {
+                        style.opacity = 0.7;
+                      } else {
+                        style.opacity = 0.4;
+                      }
+                    } else if (wordSyncStyle === "fade") {
+                      if (isFuture) {
+                        style.opacity = 0;
+                        style.transform = "translateY(8px) scale(0.9)";
+                      } else {
+                        style.opacity = 1;
+                        style.transform = "translateY(0) scale(1)";
+                        if (isActive) {
+                          style.color = wordSyncActiveColor;
+                          style.fontWeight = "bold";
+                        }
+                      }
+                    }
+
+                    return (
+                      <span
+                        key={wIdx}
+                        className={className}
+                        style={style}
+                      >
+                        {word}
+                      </span>
+                    );
+                  })}
+                </div>
+              );
+            }
           )}
         </div>
         <audio ref={audioRef} onEnded={handleAudioEnded} className="hidden" />

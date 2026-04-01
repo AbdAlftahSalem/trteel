@@ -119,6 +119,9 @@ export async function exportVideo({
     ayahGlassPadding,
     ayahGlassBorderRadius,
     ayahGlassGlow,
+    enableWordSync,
+    wordSyncStyle,
+    wordSyncActiveColor,
   } = state;
 
   onProgress(1);
@@ -190,7 +193,7 @@ export async function exportVideo({
 
   const waveRelH = [0.4, 0.7, 0.9, 0.5, 0.8, 0.6, 0.9, 0.7, 0.4, 0.8, 0.5, 0.7];
 
-  const drawFrame = (text: string, phase: number) => {
+  const drawFrame = (text: string, phase: number, ayahTime: number, totalDur: number) => {
     ctx.fillStyle = "#000";
     ctx.fillRect(0, 0, CW, CH);
 
@@ -305,14 +308,77 @@ export async function exportVideo({
     let sy = textBlockBottom - totalTextH + lh * 0.8;
     ctx.shadowOffsetX = 0;
     ctx.shadowOffsetY = 4 * SC;
-    lines.forEach((ln) => {
-      if (showAyahGlassEffect) {
-        ctx.shadowBlur = 0; // Remove shadow when glass is active for a cleaner look
-        ctx.shadowColor = "transparent";
-      }
-      ctx.fillText(ln, tx, sy);
-      sy += lh;
-    });
+    
+    if (!enableWordSync) {
+      lines.forEach((ln) => {
+        if (showAyahGlassEffect) {
+          ctx.shadowBlur = 0;
+          ctx.shadowColor = "transparent";
+        }
+        ctx.fillText(ln, tx, sy);
+        sy += lh;
+      });
+    } else {
+      // Word-level rendering
+      const allWords = text.split(/\s+/).filter(w => w.length > 0);
+      const wordLengths = allWords.map(w => w.length);
+      const totalCharLength = wordLengths.reduce((a, b) => a + b, 0);
+      let cumulativeTime = 0;
+      let wordIdxGlobal = 0;
+
+      lines.forEach((ln) => {
+        const lineWordsArr = ln.split(/\s+/).filter(w => w.length > 0);
+        const lineW = ctx.measureText(ln).width;
+        let curX = tx + (lineW / 2); // Start from right for RTL
+
+        lineWordsArr.forEach((word) => {
+          const wLen = word.length;
+          const wDur = (wLen / totalCharLength) * totalDur;
+          const startTime = cumulativeTime;
+          const endTime = cumulativeTime + wDur;
+          cumulativeTime = endTime;
+
+          const isActive = ayahTime >= startTime && ayahTime < endTime;
+          const isFuture = ayahTime < startTime;
+          const isPast = ayahTime >= endTime;
+
+          ctx.save();
+          const wordW = ctx.measureText(word).width;
+          const spaceW = ctx.measureText(" ").width;
+
+          if (wordSyncStyle === "karaoke") {
+            if (isActive) {
+              ctx.fillStyle = wordSyncActiveColor;
+              ctx.shadowColor = wordSyncActiveColor + "40";
+              ctx.shadowBlur = 15 * SC;
+              // Subtle scale simulation for active word (not easy in canvas without transform)
+            } else if (isPast) {
+              ctx.globalAlpha = 0.8;
+            } else {
+              ctx.globalAlpha = 0.5;
+            }
+          } else if (wordSyncStyle === "fade") {
+            if (isFuture) {
+              ctx.globalAlpha = 0;
+            } else {
+              ctx.globalAlpha = 1;
+            }
+          }
+
+          if (showAyahGlassEffect) {
+            ctx.shadowBlur = 0;
+            ctx.shadowColor = "transparent";
+          }
+
+          ctx.fillText(word, curX, sy);
+          ctx.restore();
+          
+          curX -= (wordW + spaceW);
+          wordIdxGlobal++;
+        });
+        sy += lh;
+      });
+    }
     ctx.restore();
 
     if (showSurahName) {
@@ -470,9 +536,10 @@ export async function exportVideo({
 
     const currentData = audioData.find(d => currentTime >= d.start && currentTime < d.start + d.duration) || audioData[audioData.length - 1];
     const ayahText = selectedAyahs[currentData.ayahIdx]?.text || "";
+    const ayahTime = currentTime - currentData.start;
     
     phase += frameTime * ((2 * Math.PI) / 1.6);
-    drawFrame(ayahText, phase);
+    drawFrame(ayahText, phase, ayahTime, currentData.duration);
     
     // Copy to a pool canvas and start blob conversion
     const poolIdx = f % blobPoolSize;

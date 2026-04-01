@@ -13,7 +13,7 @@ export function useEditorState() {
     surahXPosition: 50,
     ayahFontSize: 16,
     surahFontSize: 12,
-    ayahColor: "#ffffff",
+    ayahColor: "#a1a1aa",
     ayahShadowColor: "#000000",
     surahColor: "#ffffff",
     surahShadowColor: "#000000",
@@ -51,6 +51,9 @@ export function useEditorState() {
     ayahGlassPadding: 20,
     ayahGlassBorderRadius: 24,
     ayahGlassGlow: true,
+    enableWordSync: true,
+    wordSyncStyle: "karaoke",
+    wordSyncActiveColor: "#ffffff",
   });
 
   const updateState = useCallback(
