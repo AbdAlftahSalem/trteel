@@ -59,7 +59,11 @@ export type EditorState = {
   showWave: boolean;
   showSurahName: boolean;
   aspectRatio: string;
+  bgType: "image" | "video";
   bgImage: any;
+  bgVideo: string | null;
+  bgVideoRange: [number, number];
+  bgVideoDuration: number;
   showWatermark: boolean;
   watermarkMode: "image" | "text";
   watermarkImage: string | null;

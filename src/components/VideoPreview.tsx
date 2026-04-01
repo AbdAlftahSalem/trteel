@@ -31,24 +31,16 @@ export function VideoPreview({
   const previewRef = useRef<HTMLDivElement | null>(null);
   const [previewWidth, setPreviewWidth] = useState<number>(400);
   const previewScale = previewWidth / 400;
-
-  useEffect(() => {
-    const el = previewRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver((entries) => {
-      const w = entries[0]?.contentRect.width;
-      if (w && w > 0) setPreviewWidth(w);
-    });
-    ro.observe(el);
-    if (el.clientWidth > 0) setPreviewWidth(el.clientWidth);
-    return () => ro.disconnect();
-  }, []);
+  const bgVideoRef = useRef<HTMLVideoElement | null>(null);
 
   const {
-    aspectRatio,
+    bgType,
     bgImage,
+    bgVideo,
+    bgVideoRange,
     bgBlur,
     bgDim,
+    aspectRatio,
     showWave,
     waveColor,
     waveHeight,
@@ -77,23 +69,76 @@ export function VideoPreview({
     showSafeArea,
   } = state;
 
+  useEffect(() => {
+    const el = previewRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      const w = entries[0]?.contentRect.width;
+      if (w && w > 0) setPreviewWidth(w);
+    });
+    ro.observe(el);
+    if (el.clientWidth > 0) setPreviewWidth(el.clientWidth);
+    return () => ro.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const video = bgVideoRef.current;
+    if (!video || bgType !== "video") return;
+
+    if (isPlaying) {
+      video.play();
+    } else {
+      video.pause();
+    }
+  }, [isPlaying, bgType]);
+
+  useEffect(() => {
+    const video = bgVideoRef.current;
+    if (!video || bgType !== "video") return;
+
+    video.currentTime = bgVideoRange[0];
+    
+    const handleTimeUpdate = () => {
+      if (video.currentTime >= bgVideoRange[1]) {
+        video.currentTime = bgVideoRange[0];
+      }
+    };
+
+    video.addEventListener("timeupdate", handleTimeUpdate);
+    return () => video.removeEventListener("timeupdate", handleTimeUpdate);
+  }, [bgVideo, bgVideoRange, bgType]);
+
   return (
     <div
       ref={previewRef}
       className="relative h-full max-h-[min(85vh,720px)] w-auto max-w-full overflow-hidden rounded-[34px] border-[6px] border-[#20252e] shadow-[0_30px_80px_rgba(10,16,28,0.35)] transition-all duration-500 ease-in-out"
       style={{ aspectRatio }}
     >
-      <Image
-        src={bgImage}
-        alt="Quran video preview"
-        fill
-        priority
-        loading="eager"
-        className={`object-cover transition-transform duration-[10000ms] ease-linear ${
-          isPlaying ? "scale-110" : "scale-100"
-        }`}
-        style={{ filter: `blur(${bgBlur}px)` }}
-      />
+      {bgType === "image" ? (
+        <Image
+          src={bgImage}
+          alt="Quran video preview"
+          fill
+          priority
+          loading="eager"
+          className={`object-cover transition-transform duration-[10000ms] ease-linear ${
+            isPlaying ? "scale-110" : "scale-100"
+          }`}
+          style={{ filter: `blur(${bgBlur}px)` }}
+        />
+      ) : (
+        bgVideo && (
+          <video
+            ref={bgVideoRef}
+            src={bgVideo}
+            muted
+            loop
+            playsInline
+            className="absolute inset-0 h-full w-full object-cover"
+            style={{ filter: `blur(${bgBlur}px)` }}
+          />
+        )
+      )}
       <div
         className={`absolute inset-0 transition-all duration-500`}
         style={{ backgroundColor: `rgba(0, 0, 0, ${bgDim})` }}

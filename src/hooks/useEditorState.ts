@@ -24,7 +24,11 @@ export function useEditorState() {
     showWave: true,
     showSurahName: true,
     aspectRatio: "9/16",
+    bgType: "image",
     bgImage: BACKGROUNDS[0],
+    bgVideo: null,
+    bgVideoRange: [0, 10], // Default 10s range
+    bgVideoDuration: 0,
     showWatermark: false,
     watermarkMode: "image",
     watermarkImage: null,

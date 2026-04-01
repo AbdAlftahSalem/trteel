@@ -11,6 +11,9 @@ import {
   AudioLines,
   MoveVertical,
   Clapperboard,
+  Film,
+  UploadCloud,
+  Scissors,
 } from "lucide-react";
 import { SettingAccordion } from "./SettingAccordion";
 import { EditorState } from "@/types";
@@ -43,7 +46,10 @@ export function SettingsSidebar({
     selectedSurahNumber,
     fromAyah,
     toAyah,
+    bgType,
     bgImage,
+    bgVideo,
+    bgVideoRange,
     bgDim,
     bgBlur,
     ayahFontSize,
@@ -282,45 +288,134 @@ export function SettingsSidebar({
             onToggle={setActiveAccordion}
             isDarkMode={isDarkMode}
           >
-            <div className="grid grid-cols-3 gap-3">
-              {BACKGROUNDS.map((bg, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => updateState({ bgImage: bg })}
-                  className={`group relative aspect-square flex-shrink-0 cursor-pointer overflow-hidden rounded-xl border-2 transition-all duration-500 hover:scale-110 hover:shadow-[0_0_20px_rgba(22,119,255,0.4)] hover:z-10 hover:brightness-110 ${
-                    bgImage === bg
-                      ? "border-[#1677ff] shadow-[0_0_25px_rgba(22,119,255,0.5)] scale-[1.05] ring-2 ring-[#1677ff]/40"
-                      : "border-transparent"
-                  }`}
-                >
-                  <Image
-                    src={bg}
-                    alt={`BG ${idx + 1}`}
-                    fill
-                    className="object-cover transition-transform duration-700 group-hover:scale-125"
-                  />
-                  <div className={`absolute inset-0 transition-opacity duration-300 ${bgImage === bg ? "bg-black/0" : "bg-black/30 group-hover:bg-black/0"}`} />
-                </button>
-              ))}
-              <label className={`flex aspect-square cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed transition-all ${
-                  isDarkMode ? "border-[#2f3545] bg-[#252c3c] hover:bg-[#2c3346]" : "border-[#dce6f8] bg-white hover:bg-[#eef4ff]"
-              }`}>
-                <ImagePlus size={14} className="text-[#1f6feb]" />
-                <input
-                  type="file"
-                  hidden
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      const reader = new FileReader();
-                      reader.onload = (event) => updateState({ bgImage: event.target?.result as string });
-                      reader.readAsDataURL(file);
-                    }
-                  }}
-                />
-              </label>
+            <div className={`flex rounded-lg p-1 mb-4 ${isDarkMode ? "bg-[#252c3c]" : "bg-[#ebedf2]"}`}>
+              <button
+                onClick={() => updateState({ bgType: "image" })}
+                className={`flex-1 rounded-md py-1.5 text-[10px] font-bold transition-all ${
+                  bgType === "image"
+                    ? isDarkMode ? "bg-[#2f3545] text-white" : "bg-white text-[#1677ff]"
+                    : "text-[#5b6373] hover:opacity-80"
+                }`}
+              >
+                صورة
+              </button>
+              <button
+                onClick={() => updateState({ bgType: "video" })}
+                className={`flex-1 rounded-md py-1.5 text-[10px] font-bold transition-all ${
+                  bgType === "video"
+                    ? isDarkMode ? "bg-[#2f3545] text-white" : "bg-white text-[#1677ff]"
+                    : "text-[#5b6373] hover:opacity-80"
+                }`}
+              >
+                فيديو
+              </button>
             </div>
+
+            {bgType === "image" ? (
+              <div className="grid grid-cols-3 gap-3">
+                {BACKGROUNDS.map((bg, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => updateState({ bgImage: bg })}
+                    className={`group relative aspect-square flex-shrink-0 cursor-pointer overflow-hidden rounded-xl border-2 transition-all duration-500 hover:scale-110 hover:shadow-[0_0_20px_rgba(22,119,255,0.4)] hover:z-10 hover:brightness-110 ${
+                      bgImage === bg
+                        ? "border-[#1677ff] shadow-[0_0_25px_rgba(22,119,255,0.5)] scale-[1.05] ring-2 ring-[#1677ff]/40"
+                        : "border-transparent"
+                    }`}
+                  >
+                    <Image
+                      src={bg}
+                      alt={`BG ${idx + 1}`}
+                      fill
+                      className="object-cover transition-transform duration-700 group-hover:scale-125"
+                    />
+                    <div className={`absolute inset-0 transition-opacity duration-300 ${bgImage === bg ? "bg-black/0" : "bg-black/30 group-hover:bg-black/0"}`} />
+                  </button>
+                ))}
+                <label className={`flex aspect-square cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed transition-all ${
+                    isDarkMode ? "border-[#2f3545] bg-[#252c3c] hover:bg-[#2c3346]" : "border-[#dce6f8] bg-white hover:bg-[#eef4ff]"
+                }`}>
+                  <ImagePlus size={14} className="text-[#1f6feb]" />
+                  <input
+                    type="file"
+                    hidden
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (event) => updateState({ bgImage: event.target?.result as string });
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                  />
+                </label>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <label className={`flex h-24 cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed transition-all ${
+                    isDarkMode ? "border-[#2f3545] bg-[#252c3c] hover:bg-[#2c3346]" : "border-[#dce6f8] bg-white hover:bg-[#eef4ff]"
+                }`}>
+                  <UploadCloud size={24} className="text-[#1677ff]" />
+                  <span className="text-[10px] font-bold text-[#8a93a5]">
+                    {bgVideo ? "تم اختيار فيديو" : "رفع فيديو خلفية (Upload Video)"}
+                  </span>
+                  <input
+                    type="file"
+                    hidden
+                    accept="video/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const url = URL.createObjectURL(file);
+                        const video = document.createElement("video");
+                        video.src = url;
+                        video.onloadedmetadata = () => {
+                          updateState({ bgVideo: url, bgVideoRange: [0, Math.min(15, video.duration)] });
+                        };
+                      }
+                    }}
+                  />
+                </label>
+                {bgVideo && (
+                  <div className="rounded-xl border border-[#ebedf2] dark:border-[#2f3545] p-3">
+                    <div className="flex items-center justify-between mb-2">
+                       <div className="flex items-center gap-2">
+                          <Scissors size={12} className="text-[#1677ff]" />
+                          <span className="text-[10px] font-extrabold text-[#1f2532] dark:text-white">قص المقطع (Trim)</span>
+                       </div>
+                       <span className="text-[9px] font-bold text-[#8a93a5]">
+                         مدة الفيديو: {bgVideoRange[1] - bgVideoRange[0] > 0 ? (bgVideoRange[1] - bgVideoRange[0]).toFixed(1) : 0}ث
+                       </span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                       <div className="flex-1">
+                          <label className="mb-1 block text-[9px] font-bold text-[#8a93a5]">البداية</label>
+                          <input 
+                            type="number" 
+                            step="0.1" 
+                            min="0" 
+                            value={bgVideoRange[0]} 
+                            onChange={(e) => updateState({ bgVideoRange: [Number(e.target.value), bgVideoRange[1]] })}
+                            className={`w-full h-8 rounded-lg border text-center text-xs font-bold ${isDarkMode ? "bg-[#2f3545] border-[#212735] text-white" : "bg-white border-[#e3e7ef] text-[#1f2532]"}`}
+                          />
+                       </div>
+                       <div className="flex-1">
+                          <label className="mb-1 block text-[9px] font-bold text-[#8a93a5]">النهاية (ث)</label>
+                          <input 
+                            type="number" 
+                            step="0.1" 
+                            min={bgVideoRange[0] + 0.1}
+                            value={bgVideoRange[1]} 
+                            onChange={(e) => updateState({ bgVideoRange: [bgVideoRange[0], Number(e.target.value)] })}
+                            className={`w-full h-8 rounded-lg border text-center text-xs font-bold ${isDarkMode ? "bg-[#2f3545] border-[#212735] text-white" : "bg-white border-[#e3e7ef] text-[#1f2532]"}`}
+                          />
+                       </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
             <div className="mt-5 space-y-4">
               <div>
                 <div className="mb-2 flex items-center justify-between text-[11px] font-bold text-[#5b6373]">

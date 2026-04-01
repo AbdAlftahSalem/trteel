@@ -110,6 +110,9 @@ export async function exportVideo({
     selectedReciterId,
     exportQuality,
     exportPreset,
+    bgType,
+    bgVideo,
+    bgVideoRange,
   } = state;
 
   onProgress(1);
@@ -144,8 +147,23 @@ export async function exportVideo({
   const bgElInput = bgSrc ? await loadEl(bgSrc) : null;
   let bgEl: HTMLImageElement | HTMLCanvasElement | null = bgElInput;
 
+  // Video background setup
+  let videoBG: HTMLVideoElement | null = null;
+  if (bgType === "video" && bgVideo) {
+    videoBG = document.createElement("video");
+    videoBG.src = bgVideo;
+    videoBG.muted = true;
+    videoBG.preload = "auto";
+    videoBG.crossOrigin = "anonymous";
+    await new Promise((resolve) => {
+      if (!videoBG) return resolve(false);
+      videoBG.onloadeddata = () => resolve(true);
+      videoBG.onerror = () => resolve(false);
+    });
+  }
+
   // OPTIMIZATION: Pre-blur background if needed to avoid expensive filter on every frame
-  if (bgElInput && bgBlur > 0) {
+  if (bgType === "image" && bgElInput && bgBlur > 0) {
     const blurCanvas = document.createElement("canvas");
     blurCanvas.width = CW;
     blurCanvas.height = CH;
@@ -170,7 +188,15 @@ export async function exportVideo({
     ctx.fillStyle = "#000";
     ctx.fillRect(0, 0, CW, CH);
 
-    if (bgEl) {
+    if (bgType === "video" && videoBG) {
+      ctx.save();
+      if (bgBlur > 0) ctx.filter = `blur(${bgBlur * SC}px)`;
+      const s = Math.max(CW / (videoBG.videoWidth || 1), CH / (videoBG.videoHeight || 1));
+      const w = videoBG.videoWidth * s;
+      const h = videoBG.videoHeight * s;
+      ctx.drawImage(videoBG, (CW - w) / 2, (CH - h) / 2, w, h);
+      ctx.restore();
+    } else if (bgEl) {
       // Use the pre-blurred (or original) background without filter
       const s = bgEl instanceof HTMLCanvasElement ? 1 : Math.max(CW / ((bgEl as HTMLImageElement).naturalWidth || 1), CH / ((bgEl as HTMLImageElement).naturalHeight || 1));
       const w = "naturalWidth" in bgEl ? bgEl.naturalWidth * s : bgEl.width * s;
@@ -364,6 +390,19 @@ export async function exportVideo({
 
   for (let f = 0; f < totalFrames; f++) {
     const currentTime = f * frameTime;
+
+    if (bgType === "video" && videoBG) {
+      const vStart = bgVideoRange[0];
+      const vDur = bgVideoRange[1] - vStart;
+      const seekTime = vStart + (currentTime % vDur);
+      
+      await new Promise(res => {
+        if (!videoBG) return res(null);
+        videoBG.onseeked = () => res(null);
+        videoBG.currentTime = seekTime;
+      });
+    }
+
     const currentData = audioData.find(d => currentTime >= d.start && currentTime < d.start + d.duration) || audioData[audioData.length - 1];
     const ayahText = selectedAyahs[currentData.ayahIdx]?.text || "";
     
