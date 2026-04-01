@@ -6,7 +6,7 @@ import { useAudioPlayer } from "@/hooks/useAudioPlayer";
 import { useVideoExport } from "@/hooks/useVideoExport";
 import { VideoPreview } from "@/components/VideoPreview";
 import { SettingsSidebar } from "@/components/SettingsSidebar";
-import { quranData, surahs } from "@/constants";
+import { quranData, quranEnData, quranEsData, quranFrData, surahs } from "@/constants";
 
 export default function Home() {
   const { state, updateState } = useEditorState();
@@ -21,10 +21,23 @@ export default function Home() {
   const selectedAyahs = useMemo(() => {
     const surah = quranData.data.surahs.find((s) => s.number === state.selectedSurahNumber);
     if (!surah) return [];
-    return surah.ayahs.filter(
-      (ayah) => ayah.numberInSurah >= state.fromAyah && ayah.numberInSurah <= state.toAyah
-    );
-  }, [state.selectedSurahNumber, state.fromAyah, state.toAyah]);
+
+    let translationData = quranEnData;
+    if (state.selectedLanguage === "es") translationData = quranEsData;
+    else if (state.selectedLanguage === "fr") translationData = quranFrData;
+
+    const translationSurah = translationData.data.surahs.find((s) => s.number === state.selectedSurahNumber);
+
+    return surah.ayahs
+      .filter((ayah) => ayah.numberInSurah >= state.fromAyah && ayah.numberInSurah <= state.toAyah)
+      .map((ayah) => {
+        const trans = translationSurah?.ayahs.find((ta) => ta.numberInSurah === ayah.numberInSurah);
+        return {
+          ...ayah,
+          translation: trans?.text,
+        };
+      });
+  }, [state.selectedSurahNumber, state.fromAyah, state.toAyah, state.selectedLanguage]);
 
   const {
     audioRef,

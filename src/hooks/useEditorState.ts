@@ -55,6 +55,10 @@ export function useEditorState() {
     wordSyncStyle: "karaoke",
     wordSyncActiveColor: "#ffffff",
     audioEffect: "none",
+    showTranslation: true,
+    selectedLanguage: "en",
+    translationFontSize: 12,
+    translationColor: "#ffffff",
   });
 
   const updateState = useCallback(

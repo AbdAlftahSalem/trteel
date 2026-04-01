@@ -18,6 +18,7 @@ export type Surah = {
 export type Ayah = {
   number: number;
   text: string;
+  translation?: string;
   numberInSurah: number;
 };
 
@@ -90,4 +91,8 @@ export type EditorState = {
   wordSyncStyle: "karaoke" | "fade";
   wordSyncActiveColor: string;
   audioEffect: "none" | "studio" | "mosque";
+  showTranslation: boolean;
+  selectedLanguage: "en" | "es" | "fr";
+  translationFontSize: number;
+  translationColor: string;
 };

@@ -88,6 +88,10 @@ export function SettingsSidebar({
     wordSyncStyle,
     wordSyncActiveColor,
     audioEffect,
+    showTranslation,
+    selectedLanguage,
+    translationFontSize,
+    translationColor,
   } = state;
 
   const handleSurahChange = (nextSurahNumber: number) => {
@@ -289,6 +293,90 @@ export function SettingsSidebar({
                   />
                 </label>
               </div>
+            </div>
+          </SettingAccordion>
+
+          <SettingAccordion
+            id="translation"
+            title="الترجمة (Translation)"
+            icon={<ALargeSmall size={16} />}
+            isActive={activeAccordion === "translation"}
+            onToggle={setActiveAccordion}
+            isDarkMode={isDarkMode}
+          >
+            <div className="space-y-4">
+              <button
+                type="button"
+                onClick={() => updateState({ showTranslation: !showTranslation })}
+                className="flex w-full items-center justify-between py-1 text-right"
+              >
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs font-bold ${isDarkMode ? "text-white" : "text-[#1f2532]"}`}>إظهار الترجمة</span>
+                  <span className="rounded bg-indigo-500/10 px-1.5 py-0.5 text-[8px] font-bold text-indigo-500">TRANS</span>
+                </div>
+                <div className={`relative h-5 w-9 rounded-full transition-colors ${showTranslation ? "bg-[#1677ff]" : isDarkMode ? "bg-[#2f3545]" : "bg-[#dde1ea]"}`}>
+                  <span className={`absolute top-1 h-3 w-3 rounded-full bg-white transition-all ${showTranslation ? "left-1" : "left-5"}`} />
+                </div>
+              </button>
+
+              {showTranslation && (
+                <div className="mt-4 space-y-4 pr-2 border-r-2 border-indigo-500/20">
+                  <div>
+                    <label className={`mb-2 block text-[11px] font-bold ${isDarkMode ? "text-[#6e7786]" : "text-[#81899a]"}`}>
+                      لغة الترجمة
+                    </label>
+                    <div className="relative">
+                      <select
+                        value={selectedLanguage}
+                        onChange={(e) => updateState({ selectedLanguage: e.target.value as any })}
+                        className={`h-11 w-full appearance-none rounded-xl border px-3 text-xs font-bold outline-none transition focus:border-[#2f7dff] ${
+                          isDarkMode ? "bg-[#252c3c] border-[#2f3545] text-white" : "bg-white border-[#e3e7ef] text-[#1f2532]"
+                        }`}
+                      >
+                        <option value="en">English (الإنجليزية)</option>
+                        <option value="es">Spanish (الإسبانية)</option>
+                        <option value="fr">French (الفرنسية)</option>
+                      </select>
+                      <ChevronDown className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#6e7786]" size={14} />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <div className="mb-2 text-[10px] font-bold text-[#81899a]">حجم خط الترجمة</div>
+                      <div className={`flex items-center gap-3 h-10 px-3 border rounded-xl ${
+                          isDarkMode ? "bg-[#252c3c] border-[#2f3545]" : "bg-white border-[#e3e7ef]"
+                      }`}>
+                        <input
+                          type="range"
+                          min="8"
+                          max="40"
+                          value={translationFontSize}
+                          onChange={(e) => updateState({ translationFontSize: Number(e.target.value) })}
+                          className="h-1 flex-1 accent-[#1677ff]"
+                        />
+                        <span className={`text-xs font-bold w-4 text-center ${isDarkMode ? "text-white" : "text-[#1f2532]"}`}>{translationFontSize}</span>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="mb-2 text-[10px] font-bold text-[#81899a]">لون الترجمة</div>
+                      <div className={`flex items-center gap-2 h-10 px-2 border rounded-xl overflow-hidden ${
+                          isDarkMode ? "bg-[#252c3c] border-[#2f3545]" : "bg-white border-[#e3e7ef]"
+                      }`}>
+                        <input
+                          type="color"
+                          value={translationColor}
+                          onChange={(e) => updateState({ translationColor: e.target.value })}
+                          className="h-6 w-6 cursor-pointer border-0 bg-transparent"
+                        />
+                        <span className={`text-[9px] font-mono font-bold uppercase truncate ${
+                            isDarkMode ? "text-[#8a93a5]" : "text-[#5b6373]"
+                        }`}>{translationColor}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </SettingAccordion>
 

@@ -1,7 +1,10 @@
 import { AspectRatio, Surah, Reciter, QuranData } from "@/types";
-import surahsData from "@/assets/quran_surahs.json";
-import quranDataRaw from "@/assets/quran.json";
-import recitersDataRaw from "@/assets/reciters.json";
+import surahsData from "@/assets/quran/quran_ar.json";
+import quranDataRaw from "@/assets/quran/quran.json";
+import quranEnDataRaw from "@/assets/quran/quran_en.json";
+import quranEsDataRaw from "@/assets/quran/quran_es.json";
+import quranFrDataRaw from "@/assets/quran/quran_fr.json";
+import recitersDataRaw from "@/assets/quran/reciters.json";
 
 import bg1 from "@/assets/images/1.svg";
 import bg2 from "@/assets/images/2.svg";
@@ -12,6 +15,9 @@ import bg5 from "@/assets/images/5.svg";
 export const recitersData = recitersDataRaw as { reciters: Reciter[] };
 export const reciters = recitersData.reciters;
 export const quranData = quranDataRaw as unknown as QuranData;
+export const quranEnData = quranEnDataRaw as unknown as QuranData;
+export const quranEsData = quranEsDataRaw as unknown as QuranData;
+export const quranFrData = quranFrDataRaw as unknown as QuranData;
 
 export const fallbackSurah: Surah = {
   number: 1,

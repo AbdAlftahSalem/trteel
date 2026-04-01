@@ -131,6 +131,12 @@ export function VideoPreview({
     return () => audio.removeEventListener("timeupdate", handleUpdate);
   }, [audioRef.current, currentAyahIndex]);
 
+    const {
+    showTranslation,
+    translationFontSize,
+    translationColor
+  } = state;
+
   return (
     <div
       ref={previewRef}
@@ -250,9 +256,8 @@ export function VideoPreview({
       </div>
 
       <div
-        className="absolute z-10 flex w-[85%] -translate-x-1/2 flex-col items-center justify-center text-center text-white transition-all duration-300 ease-out"
+        className="absolute z-10 flex w-[85%] -translate-x-1/2 flex-col items-center justify-center text-center text-white transition-all duration-300 ease-out gap-4"
         style={{ bottom: `${yPosition}%`, left: `${xPosition}%` }}
-        dir="rtl"
       >
         <div 
           className={`max-h-[80%] w-full text-center transition-all duration-500 ${
@@ -274,94 +279,103 @@ export function VideoPreview({
             (ayah, index) => {
               if (index !== currentAyahIndex) return null;
 
-              if (!enableWordSync) {
-                return (
-                  <p
-                    key={ayah.number}
-                    className="text-balance font-medium transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)]"
-                    style={{
-                      fontSize: `${ayahFontSize * previewScale}px`,
-                      color: ayahColor,
-                      lineHeight: 1.6,
-                      textShadow: showAyahGlassEffect ? "none" : `0 4px 12px ${ayahShadowColor}80`,
-                      animation: "fade-slide-up 0.8s forwards",
-                    }}
-                  >
-                    {ayah.text}
-                  </p>
-                );
-              }
-
-              // Word Syncing Logic
-              const words = ayah.text.split(/\s+/).filter(w => w.length > 0);
-              const totalDuration = audioRef.current?.duration || 4; // Fallback to 4s
-              const wordLengths = words.map(w => w.length);
-              const totalLength = wordLengths.reduce((a, b) => a + b, 0);
-              let cumulativeTime = 0;
-
               return (
-                <div 
-                  key={ayah.number}
-                  className="flex flex-wrap justify-center gap-x-[0.35em] text-balance font-medium"
-                  style={{
-                    fontSize: `${ayahFontSize * previewScale}px`,
-                    lineHeight: 1.6,
-                    direction: "rtl"
-                  }}
-                >
-                  {words.map((word, wIdx) => {
-                    const wordDuration = (wordLengths[wIdx] / totalLength) * totalDuration;
-                    const startTime = cumulativeTime;
-                    const endTime = cumulativeTime + wordDuration;
-                    cumulativeTime = endTime;
-
-                    const isActive = currentAudioTime >= startTime && currentAudioTime < endTime;
-                    const isFuture = currentAudioTime < startTime;
-                    const isPast = currentAudioTime >= endTime;
-
-                    const style: React.CSSProperties = {
-                      color: ayahColor,
-                      textShadow: showAyahGlassEffect ? "none" : `0 4px 12px ${ayahShadowColor}80`,
-                      transition: "all 0.6s cubic-bezier(0.23, 1, 0.32, 1)",
-                    };
-
-                    let className = "inline-block";
-
-                    if (wordSyncStyle === "karaoke") {
-                      if (isActive) {
-                        style.color = wordSyncActiveColor;
-                        style.fontWeight = "bold";
-                        style.textShadow = `0 0 20px ${wordSyncActiveColor}60`;
-                        className += " active-word-karaoke";
-                      } else if (isPast) {
-                        style.opacity = 0.7;
-                      } else {
-                        style.opacity = 0.4;
-                      }
-                    } else if (wordSyncStyle === "fade") {
-                      if (isFuture) {
-                        style.opacity = 0;
-                        style.transform = "translateY(8px) scale(0.9)";
-                      } else {
-                        style.opacity = 1;
-                        style.transform = "translateY(0) scale(1)";
-                        if (isActive) {
-                          style.color = wordSyncActiveColor;
-                          style.fontWeight = "bold";
-                        }
-                      }
-                    }
-
-                    return (
-                      <span
-                        key={wIdx}
-                        className={className}
-                        style={style}
+                <div key={ayah.number} className="flex flex-col gap-4">
+                  <div dir="rtl">
+                    {!enableWordSync ? (
+                      <p
+                        className="text-balance font-medium transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)]"
+                        style={{
+                          fontSize: `${ayahFontSize * previewScale}px`,
+                          color: ayahColor,
+                          lineHeight: 1.6,
+                          textShadow: showAyahGlassEffect ? "none" : `0 4px 12px ${ayahShadowColor}80`,
+                          animation: "fade-slide-up 0.8s forwards",
+                        }}
                       >
-                        {word}
-                      </span>
-                    );
-                  })}
+                        {ayah.text}
+                      </p>
+                    ) : (
+                      // Word Syncing Logic for Arabic Text
+                      <div 
+                        className="flex flex-wrap justify-center gap-x-[0.35em] text-balance font-medium"
+                        style={{
+                          fontSize: `${ayahFontSize * previewScale}px`,
+                          lineHeight: 1.6,
+                          direction: "rtl"
+                        }}
+                      >
+                        {(ayah.text.split(/\s+/).filter(w => w.length > 0)).map((word, wIdx) => {
+                          const words = ayah.text.split(/\s+/).filter(w => w.length > 0);
+                          const totalDuration = audioRef.current?.duration || 4;
+                          const wordLengths = words.map(w => w.length);
+                          const totalLength = wordLengths.reduce((a, b) => a + b, 0);
+                          let cumulativeTime = 0;
+                          for(let i=0; i<wIdx; i++) cumulativeTime += (wordLengths[i] / totalLength) * totalDuration;
+                          
+                          const wordDuration = (wordLengths[wIdx] / totalLength) * totalDuration;
+                          const startTime = cumulativeTime;
+                          const endTime = cumulativeTime + wordDuration;
+
+                          const isActive = currentAudioTime >= startTime && currentAudioTime < endTime;
+                          const isFuture = currentAudioTime < startTime;
+                          const isPast = currentAudioTime >= endTime;
+
+                          const style: React.CSSProperties = {
+                            color: ayahColor,
+                            textShadow: showAyahGlassEffect ? "none" : `0 4px 12px ${ayahShadowColor}80`,
+                            transition: "all 0.6s cubic-bezier(0.23, 1, 0.32, 1)",
+                          };
+
+                          let className = "inline-block";
+                          if (wordSyncStyle === "karaoke") {
+                            if (isActive) {
+                              style.color = wordSyncActiveColor;
+                              style.fontWeight = "bold";
+                              style.textShadow = `0 0 20px ${wordSyncActiveColor}60`;
+                              className += " active-word-karaoke";
+                            } else if (isPast) style.opacity = 0.7;
+                            else style.opacity = 0.4;
+                          } else if (wordSyncStyle === "fade") {
+                            if (isFuture) {
+                              style.opacity = 0;
+                              style.transform = "translateY(8px) scale(0.9)";
+                            } else {
+                              style.opacity = 1;
+                              style.transform = "translateY(0) scale(1)";
+                              if (isActive) {
+                                style.color = wordSyncActiveColor;
+                                style.fontWeight = "bold";
+                              }
+                            }
+                          }
+
+                          return (
+                            <span key={wIdx} className={className} style={style}>
+                              {word}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  {showTranslation && ayah.translation && (
+                    <p
+                      dir="ltr"
+                      className="text-balance font-medium transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)]"
+                      style={{
+                        fontSize: `${translationFontSize * previewScale}px`,
+                        color: translationColor,
+                        lineHeight: 1.4,
+                        opacity: 0.9,
+                        textShadow: showAyahGlassEffect ? "none" : `0 2px 8px ${ayahShadowColor}60`,
+                        animation: "fade-slide-up 1s forwards",
+                      }}
+                    >
+                      {ayah.translation}
+                    </p>
+                  )}
                 </div>
               );
             }

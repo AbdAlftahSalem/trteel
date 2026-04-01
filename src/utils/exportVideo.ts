@@ -123,6 +123,9 @@ export async function exportVideo({
     wordSyncStyle,
     wordSyncActiveColor,
     audioEffect,
+    showTranslation,
+    translationFontSize,
+    translationColor
   } = state;
 
   onProgress(1);
@@ -194,7 +197,7 @@ export async function exportVideo({
 
   const waveRelH = [0.4, 0.7, 0.9, 0.5, 0.8, 0.6, 0.9, 0.7, 0.4, 0.8, 0.5, 0.7];
 
-  const drawFrame = (text: string, phase: number, ayahTime: number, totalDur: number) => {
+  const drawFrame = (ayah: Ayah, phase: number, ayahTime: number, totalDur: number) => {
     ctx.fillStyle = "#000";
     ctx.fillRect(0, 0, CW, CH);
 
@@ -234,7 +237,7 @@ export async function exportVideo({
 
     const tx = (xPosition / 100) * CW;
     const textBlockBottom = CH - (yPosition / 100) * CH;
-    const words = text.split(" ");
+    const words = ayah.text.split(" ");
     const lines: string[] = [];
     let cur = "";
     const maxW = CW * 0.85;
@@ -250,7 +253,36 @@ export async function exportVideo({
     if (cur) lines.push(cur);
 
     const lh = fs * 1.6;
-    const totalTextH = lines.length * lh;
+    const arabicTextH = lines.length * lh;
+
+    // Translation lines
+    const transLines: string[] = [];
+    let transBlockH = 0;
+    const tfs = translationFontSize * SC;
+    const tlh = tfs * 1.4;
+    
+    if (showTranslation && ayah.translation) {
+      ctx.save();
+      ctx.font = `${tfs}px Tajawal, sans-serif`;
+      ctx.direction = "ltr";
+      const tWords = ayah.translation.split(" ");
+      let tCur = "";
+      for (const w of tWords) {
+        const t = tCur ? `${tCur} ${w}` : w;
+        if (ctx.measureText(t).width > maxW && tCur) {
+          transLines.push(tCur);
+          tCur = w;
+        } else {
+          tCur = t;
+        }
+      }
+      if (tCur) transLines.push(tCur);
+      transBlockH = transLines.length * tlh;
+      ctx.restore();
+    }
+
+    const gap = 16 * SC;
+    const totalTextH = arabicTextH + (showTranslation && transLines.length ? (gap + transBlockH) : 0);
     
     // Glass Effect Calculations
     const pad = ayahGlassPadding * SC;
@@ -262,14 +294,11 @@ export async function exportVideo({
 
     if (showAyahGlassEffect) {
       ctx.save();
-      // 1. Shadow/Glow
       if (ayahGlassGlow) {
         ctx.shadowColor = `rgba(255, 255, 255, ${ayahGlassOpacity * 0.5})`;
         ctx.shadowBlur = 20 * SC;
       }
       
-      // 2. Background Blur Simulation (Clip & Redraw background with blur)
-      // Note: Real-time blur on every frame can be slow, but for export it's acceptable.
       ctx.beginPath();
       if ((ctx as any).roundRect) {
         (ctx as any).roundRect(glassX, glassY, glassW, glassH, radius);
@@ -278,7 +307,6 @@ export async function exportVideo({
       }
       ctx.clip();
       
-      // Redraw background with extra blur
       if (bgType === "video" && videoBG) {
         ctx.filter = `blur(${(bgBlur + ayahGlassBlur) * SC}px)`;
         const s = Math.max(CW / (videoBG.videoWidth || 1), CH / (videoBG.videoHeight || 1));
@@ -286,7 +314,7 @@ export async function exportVideo({
         const h = videoBG.videoHeight * s;
         ctx.drawImage(videoBG, (CW - w) / 2, (CH - h) / 2, w, h);
       } else if (bgEl) {
-        ctx.filter = `blur(${ayahGlassBlur * SC}px)`; // bgEl might already be blurred
+        ctx.filter = `blur(${ayahGlassBlur * SC}px)`; 
         const s = bgEl instanceof HTMLCanvasElement ? 1 : Math.max(CW / ((bgEl as HTMLImageElement).naturalWidth || 1), CH / ((bgEl as HTMLImageElement).naturalHeight || 1));
         const w = "naturalWidth" in bgEl ? bgEl.naturalWidth * s : bgEl.width * s;
         const h = "naturalHeight" in bgEl ? bgEl.naturalHeight * s : bgEl.height * s;
@@ -294,11 +322,9 @@ export async function exportVideo({
       }
       ctx.filter = "none";
       
-      // 3. Semi-transparent overlay
       ctx.fillStyle = `rgba(255, 255, 255, ${ayahGlassOpacity})`;
       ctx.fill();
       
-      // 4. Border (the "shine" edge)
       ctx.strokeStyle = "rgba(255, 255, 255, 0.2)";
       ctx.lineWidth = 1.5 * SC;
       ctx.stroke();
@@ -310,6 +336,13 @@ export async function exportVideo({
     ctx.shadowOffsetX = 0;
     ctx.shadowOffsetY = 4 * SC;
     
+    // Arabic Rendering
+    ctx.save();
+    ctx.textAlign = "center";
+    ctx.direction = "rtl";
+    ctx.fillStyle = ayahColor;
+    ctx.font = `500 ${fs}px Tajawal, sans-serif`;
+
     if (!enableWordSync) {
       lines.forEach((ln) => {
         if (showAyahGlassEffect) {
@@ -320,17 +353,15 @@ export async function exportVideo({
         sy += lh;
       });
     } else {
-      // Word-level rendering
-      const allWords = text.split(/\s+/).filter(w => w.length > 0);
+      const allWords = ayah.text.split(/\s+/).filter(w => w.length > 0);
       const wordLengths = allWords.map(w => w.length);
       const totalCharLength = wordLengths.reduce((a, b) => a + b, 0);
       let cumulativeTime = 0;
-      let wordIdxGlobal = 0;
 
       lines.forEach((ln) => {
         const lineWordsArr = ln.split(/\s+/).filter(w => w.length > 0);
         const lineW = ctx.measureText(ln).width;
-        let curX = tx + (lineW / 2); // Start from right for RTL
+        let curX = tx + (lineW / 2); 
 
         lineWordsArr.forEach((word) => {
           const wLen = word.length;
@@ -352,7 +383,6 @@ export async function exportVideo({
               ctx.fillStyle = wordSyncActiveColor;
               ctx.shadowColor = wordSyncActiveColor + "40";
               ctx.shadowBlur = 15 * SC;
-              // Subtle scale simulation for active word (not easy in canvas without transform)
             } else if (isPast) {
               ctx.globalAlpha = 0.8;
             } else {
@@ -375,10 +405,33 @@ export async function exportVideo({
           ctx.restore();
           
           curX -= (wordW + spaceW);
-          wordIdxGlobal++;
         });
         sy += lh;
       });
+    }
+    ctx.restore();
+
+    // Translation Rendering
+    if (showTranslation && transLines.length) {
+      sy += gap - lh * 0.8 + tlh * 0.8;
+      ctx.save();
+      ctx.font = `${tfs}px Tajawal, sans-serif`;
+      ctx.fillStyle = translationColor;
+      ctx.textAlign = "center";
+      ctx.direction = "ltr";
+      ctx.globalAlpha = 0.9;
+      if (showAyahGlassEffect) {
+        ctx.shadowBlur = 0;
+        ctx.shadowColor = "transparent";
+      } else {
+        ctx.shadowColor = ayahShadowColor + "60";
+        ctx.shadowBlur = 8 * SC;
+      }
+      transLines.forEach(ln => {
+        ctx.fillText(ln, tx, sy);
+        sy += tlh;
+      });
+      ctx.restore();
     }
     ctx.restore();
 
@@ -536,11 +589,11 @@ export async function exportVideo({
     }
 
     const currentData = audioData.find(d => currentTime >= d.start && currentTime < d.start + d.duration) || audioData[audioData.length - 1];
-    const ayahText = selectedAyahs[currentData.ayahIdx]?.text || "";
+    const ayah = selectedAyahs[currentData.ayahIdx];
     const ayahTime = currentTime - currentData.start;
     
     phase += frameTime * ((2 * Math.PI) / 1.6);
-    drawFrame(ayahText, phase, ayahTime, currentData.duration);
+    if (ayah) drawFrame(ayah, phase, ayahTime, currentData.duration);
     
     // Copy to a pool canvas and start blob conversion
     const poolIdx = f % blobPoolSize;
