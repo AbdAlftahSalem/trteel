@@ -34,7 +34,7 @@ export default function Home() {
     setCurrentAyahIndex,
     handleAudioEnded,
     togglePlayback,
-  } = useAudioPlayer(state.selectedSurahNumber, state.selectedReciterId, selectedAyahs, isExporting);
+  } = useAudioPlayer(state.selectedSurahNumber, state.selectedReciterId, selectedAyahs, isExporting, state.audioEffect);
 
   const { handleExport } = useVideoExport(
     state,

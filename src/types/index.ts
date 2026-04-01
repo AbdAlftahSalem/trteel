@@ -89,4 +89,5 @@ export type EditorState = {
   enableWordSync: boolean;
   wordSyncStyle: "karaoke" | "fade";
   wordSyncActiveColor: string;
+  audioEffect: "none" | "studio" | "mosque";
 };

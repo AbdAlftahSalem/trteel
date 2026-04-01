@@ -15,6 +15,7 @@ import {
   UploadCloud,
   Scissors,
   Zap,
+  Sparkles,
 } from "lucide-react";
 import { SettingAccordion } from "./SettingAccordion";
 import { EditorState } from "@/types";
@@ -86,6 +87,7 @@ export function SettingsSidebar({
     enableWordSync,
     wordSyncStyle,
     wordSyncActiveColor,
+    audioEffect,
   } = state;
 
   const handleSurahChange = (nextSurahNumber: number) => {
@@ -746,6 +748,62 @@ export function SettingsSidebar({
                   </div>
                 </div>
               )}
+            </div>
+          </SettingAccordion>
+
+          <SettingAccordion
+            id="audio_effects"
+            title="مؤثرات الصوت (Audio FX)"
+            icon={<Sparkles size={16} />}
+            isActive={activeAccordion === "audio_effects"}
+            onToggle={setActiveAccordion}
+            isDarkMode={isDarkMode}
+          >
+            <div className="space-y-4">
+              <p className={`text-[10px] font-bold ${isDarkMode ? "text-[#6e7786]" : "text-[#81899a]"}`}>
+                اختر نوع المعالجة الصوتية لتحسين تجربة الاستماع
+              </p>
+              <div className="grid grid-cols-1 gap-2">
+                <button
+                  onClick={() => updateState({ audioEffect: "none" })}
+                  className={`flex items-center justify-between rounded-xl border p-3 transition-all ${
+                    audioEffect === "none"
+                      ? "border-[#1677ff] bg-[#1677ff]/5 text-[#1677ff]"
+                      : isDarkMode ? "border-[#2f3545] bg-[#252c3c] text-[#8a93a5]" : "border-[#e3e7ef] bg-white text-[#5b6373]"
+                  }`}
+                >
+                  <span className="text-xs font-bold">بدون مؤثرات (Natural)</span>
+                  {audioEffect === "none" && <div className="h-2 w-2 rounded-full bg-[#1677ff]" />}
+                </button>
+                <button
+                  onClick={() => updateState({ audioEffect: "studio" })}
+                  className={`flex items-center justify-between rounded-xl border p-3 transition-all ${
+                    audioEffect === "studio"
+                      ? "border-[#1677ff] bg-[#1677ff]/5 text-[#1677ff]"
+                      : isDarkMode ? "border-[#2f3545] bg-[#252c3c] text-[#8a93a5]" : "border-[#e3e7ef] bg-white text-[#5b6373]"
+                  }`}
+                >
+                  <div className="flex flex-col text-right">
+                    <span className="text-xs font-bold">صدى استوديو (Studio Reverb)</span>
+                    <span className="text-[9px] opacity-60">صدى خفيف واحترافي يحاكي غرف التسجيل</span>
+                  </div>
+                  {audioEffect === "studio" && <div className="h-2 w-2 rounded-full bg-[#1677ff]" />}
+                </button>
+                <button
+                  onClick={() => updateState({ audioEffect: "mosque" })}
+                  className={`flex items-center justify-between rounded-xl border p-3 transition-all ${
+                    audioEffect === "mosque"
+                      ? "border-[#1677ff] bg-[#1677ff]/5 text-[#1677ff]"
+                      : isDarkMode ? "border-[#2f3545] bg-[#252c3c] text-[#8a93a5]" : "border-[#e3e7ef] bg-white text-[#5b6373]"
+                  }`}
+                >
+                  <div className="flex flex-col text-right">
+                    <span className="text-xs font-bold">صدى المسجد (Mosque Echo)</span>
+                    <span className="text-[9px] opacity-60">صدى عميق وواسع يحاكي أجواء الجوامع الكبيرة</span>
+                  </div>
+                  {audioEffect === "mosque" && <div className="h-2 w-2 rounded-full bg-[#1677ff]" />}
+                </button>
+              </div>
             </div>
           </SettingAccordion>
 

@@ -54,6 +54,7 @@ export function useEditorState() {
     enableWordSync: true,
     wordSyncStyle: "karaoke",
     wordSyncActiveColor: "#ffffff",
+    audioEffect: "none",
   });
 
   const updateState = useCallback(

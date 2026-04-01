@@ -122,6 +122,7 @@ export async function exportVideo({
     enableWordSync,
     wordSyncStyle,
     wordSyncActiveColor,
+    audioEffect,
   } = state;
 
   onProgress(1);
@@ -573,11 +574,55 @@ export async function exportVideo({
   // MIX AUDIO
   const sampleRate = audioCtx.sampleRate;
   const offlineCtx = new OfflineAudioContext(2, Math.max(1, Math.ceil(totalDuration * sampleRate)), sampleRate);
+  
+  // Audio Effect Nodes for Offline Context
+  let effectNode: AudioNode | null = null;
+  const dryGain = offlineCtx.createGain();
+  const wetGain = offlineCtx.createGain();
+
+  if (audioEffect === "studio") {
+    const reverb = offlineCtx.createConvolver();
+    const length = sampleRate * 1.5;
+    const impulse = offlineCtx.createBuffer(2, length, sampleRate);
+    for (let i = 0; i < 2; i++) {
+      const chan = impulse.getChannelData(i);
+      for (let j = 0; j < length; j++) {
+        chan[j] = (Math.random() * 2 - 1) * Math.pow(1 - j / length, 4);
+      }
+    }
+    reverb.buffer = impulse;
+    dryGain.gain.value = 0.8;
+    wetGain.gain.value = 0.4;
+    reverb.connect(wetGain);
+    effectNode = reverb;
+  } else if (audioEffect === "mosque") {
+    const delay = offlineCtx.createDelay();
+    const feedback = offlineCtx.createGain();
+    delay.delayTime.value = 0.45;
+    feedback.gain.value = 0.6;
+    dryGain.gain.value = 1.0;
+    wetGain.gain.value = 0.35;
+    delay.connect(feedback);
+    feedback.connect(delay);
+    delay.connect(wetGain);
+    effectNode = delay;
+  } else {
+    dryGain.gain.value = 1.0;
+  }
+
+  dryGain.connect(offlineCtx.destination);
+  wetGain.connect(offlineCtx.destination);
+
   for (const data of audioData) {
     if (data.buffer) {
       const source = offlineCtx.createBufferSource();
       source.buffer = data.buffer;
-      source.connect(offlineCtx.destination);
+      
+      source.connect(dryGain);
+      if (effectNode) {
+        source.connect(effectNode);
+      }
+      
       source.start(data.start);
     }
   }
