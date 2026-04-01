@@ -73,4 +73,7 @@ export type EditorState = {
   bgDim: number;
   selectedReciterId: string;
   isDarkMode: boolean;
+  exportQuality: "low" | "medium" | "high";
+  exportPreset: "story" | "post" | "tiktok" | "youtube" | "whatsapp";
+  showSafeArea: boolean;
 };

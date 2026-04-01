@@ -74,6 +74,7 @@ export function VideoPreview({
     surahShadowColor,
     surahYPosition,
     surahXPosition,
+    showSafeArea,
   } = state;
 
   return (
@@ -270,6 +271,21 @@ export function VideoPreview({
               {watermarkText}
             </span>
           ) : null}
+        </div>
+      )}
+      {showSafeArea && (
+        <div className="absolute inset-0 pointer-events-none z-50 overflow-hidden">
+          {/* Top Safe Area (15%) */}
+          <div className="absolute top-0 left-0 right-0 h-[15%] border-b border-dashed border-red-500/50 bg-red-500/5 flex items-end justify-center">
+             <span className="text-[10px] text-red-500 font-bold bg-black/50 px-1 rounded">SAFE AREA TOP</span>
+          </div>
+          {/* Bottom Safe Area (25%) */}
+          <div className="absolute bottom-0 left-0 right-0 h-[25%] border-t border-dashed border-red-500/50 bg-red-500/5 flex items-start justify-center">
+             <span className="text-[10px] text-red-500 font-bold bg-black/50 px-1 rounded">SAFE AREA BOTTOM</span>
+          </div>
+          {/* Center Lines */}
+          <div className="absolute left-1/2 top-0 bottom-0 w-[1px] bg-white/20 -translate-x-1/2" />
+          <div className="absolute top-1/2 left-0 right-0 h-[1px] bg-white/20 -translate-y-1/2" />
         </div>
       )}
     </div>

@@ -1,12 +1,71 @@
 import { EditorState, Ayah, Surah } from "@/types";
-// @ts-ignore
-import fixWebmDuration from "webm-duration-fix";
+import { EXPORT_QUALITIES } from "@/constants";
 
 export interface ExportConfig {
   state: EditorState;
   selectedAyahs: Ayah[];
   selectedSurah: Surah;
   onProgress: (progress: number) => void;
+}
+
+// Simple WAV encoder for AudioBuffer
+function audioBufferToWav(buffer: AudioBuffer): Blob {
+  const numOfChan = buffer.numberOfChannels;
+  const length = buffer.length * numOfChan * 2 + 44;
+  const bufferArr = new ArrayBuffer(length);
+  const view = new DataView(bufferArr);
+  const channels = [];
+  let i;
+  let sample;
+  let offset = 0;
+  let pos = 0;
+
+  function writeString(s: string) {
+    for (i = 0; i < s.length; i++) {
+      view.setUint8(pos + i, s.charCodeAt(i));
+    }
+    pos += s.length;
+  }
+
+  function setUint16(data: number) {
+    view.setUint16(pos, data, true);
+    pos += 2;
+  }
+
+  function setUint32(data: number) {
+    view.setUint32(pos, data, true);
+    pos += 4;
+  }
+
+  writeString("RIFF");
+  setUint32(length - 8);
+  writeString("WAVE");
+  writeString("fmt ");
+  setUint32(16);
+  setUint16(1);
+  setUint16(numOfChan);
+  setUint32(buffer.sampleRate);
+  setUint32(buffer.sampleRate * 2 * numOfChan);
+  setUint16(numOfChan * 2);
+  setUint16(16);
+  writeString("data");
+  setUint32(length - pos - 4);
+
+  for (i = 0; i < buffer.numberOfChannels; i++) {
+    channels.push(buffer.getChannelData(i));
+  }
+
+  while (pos < length) {
+    for (i = 0; i < numOfChan; i++) {
+      sample = Math.max(-1, Math.min(1, channels[i][offset]));
+      sample = sample < 0 ? sample * 0x8000 : sample * 0x7FFF;
+      view.setInt16(pos, sample, true);
+      pos += 2;
+    }
+    offset++;
+  }
+
+  return new Blob([bufferArr], { type: "audio/wav" });
 }
 
 export async function exportVideo({
@@ -49,7 +108,11 @@ export async function exportVideo({
     surahXPosition,
     selectedSurahNumber,
     selectedReciterId,
+    exportQuality,
+    exportPreset,
   } = state;
+
+  onProgress(1);
 
   const RES: Record<string, { w: number; h: number }> = {
     "9/16": { w: 1080, h: 1920 },
@@ -58,70 +121,14 @@ export async function exportVideo({
     "4/5": { w: 1080, h: 1350 },
   };
   const { w: CW, h: CH } = RES[aspectRatio] ?? { w: 1080, h: 1920 };
-
   const SC = CW / 400;
 
   const canvas = document.createElement("canvas");
   canvas.width = CW;
   canvas.height = CH;
-  canvas.style.position = "fixed";
-  canvas.style.left = "-10000px";
-  canvas.style.top = "-10000px";
-  document.body.appendChild(canvas);
-
   const ctx = canvas.getContext("2d", { alpha: false })!;
 
   await document.fonts.ready;
-
-  const types = [
-    'video/mp4;codecs="avc1.42E01E, mp4a.40.2"',
-    "video/mp4",
-    'video/webm;codecs="vp9, opus"',
-    'video/webm;codecs="h264, opus"',
-    "video/webm",
-  ];
-  const mimeType = types.find((t) => MediaRecorder.isTypeSupported(t)) || "video/mp4";
-
-  const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-  if (audioCtx.state === "suspended") await audioCtx.resume();
-
-  const audioDest = audioCtx.createMediaStreamDestination();
-  const exportGain = audioCtx.createGain();
-  exportGain.gain.value = 1.0;
-  exportGain.connect(audioDest);
-
-  const silent = audioCtx.createConstantSource();
-  silent.offset.value = 0.0001;
-  silent.connect(exportGain);
-  silent.start();
-
-  ctx.fillStyle = "#000";
-  ctx.fillRect(0, 0, CW, CH);
-
-  const videoStream = canvas.captureStream(60);
-  const vTracks = videoStream.getVideoTracks();
-  const aTracks = audioDest.stream.getAudioTracks();
-
-  if (vTracks.length === 0) {
-    document.body.removeChild(canvas);
-    throw new Error("No video tracks found from canvas");
-  }
-
-  const combined = new MediaStream([...vTracks, ...aTracks]);
-  const chunks: Blob[] = [];
-  const recorder = new MediaRecorder(combined, {
-    mimeType,
-    videoBitsPerSecond: 16_000_000,
-    audioBitsPerSecond: 320_000,
-  });
-
-  recorder.ondataavailable = (e) => {
-    if (e.data && e.data.size > 0) chunks.push(e.data);
-  };
-
-  recorder.onerror = (e) => {
-    console.error("MediaRecorder error event:", e);
-  };
 
   const loadEl = async (src: string): Promise<HTMLImageElement | null> => {
     return new Promise((resolve) => {
@@ -134,7 +141,24 @@ export async function exportVideo({
   };
 
   const bgSrc = typeof bgImage === "string" ? bgImage : bgImage?.src;
-  const bgEl = bgSrc ? await loadEl(bgSrc) : null;
+  const bgElInput = bgSrc ? await loadEl(bgSrc) : null;
+  let bgEl: HTMLImageElement | HTMLCanvasElement | null = bgElInput;
+
+  // OPTIMIZATION: Pre-blur background if needed to avoid expensive filter on every frame
+  if (bgElInput && bgBlur > 0) {
+    const blurCanvas = document.createElement("canvas");
+    blurCanvas.width = CW;
+    blurCanvas.height = CH;
+    const bCtx = blurCanvas.getContext("2d", { alpha: false })!;
+    bCtx.filter = `blur(${bgBlur * SC}px)`;
+    const s = Math.max(CW / (bgElInput.naturalWidth || 1), CH / (bgElInput.naturalHeight || 1));
+    const sw = bgElInput.naturalWidth * s;
+    const sh = bgElInput.naturalHeight * s;
+    bCtx.drawImage(bgElInput, (CW - sw) / 2, (CH - sh) / 2, sw, sh);
+    bgEl = blurCanvas;
+    bCtx.filter = "none";
+  }
+
   let wmEl: HTMLImageElement | null = null;
   if (showWatermark && watermarkMode === "image" && watermarkImage) {
     wmEl = await loadEl(watermarkImage);
@@ -147,23 +171,15 @@ export async function exportVideo({
     ctx.fillRect(0, 0, CW, CH);
 
     if (bgEl) {
-      ctx.save();
-      if (bgBlur > 0) ctx.filter = `blur(${bgBlur * SC}px)`;
-      const s = Math.max(CW / (bgEl.naturalWidth || 1), CH / (bgEl.naturalHeight || 1));
-      ctx.drawImage(
-        bgEl,
-        (CW - bgEl.naturalWidth * s) / 2,
-        (CH - bgEl.naturalHeight * s) / 2,
-        bgEl.naturalWidth * s,
-        bgEl.naturalHeight * s
-      );
-      ctx.filter = "none";
-      ctx.restore();
+      // Use the pre-blurred (or original) background without filter
+      const s = bgEl instanceof HTMLCanvasElement ? 1 : Math.max(CW / ((bgEl as HTMLImageElement).naturalWidth || 1), CH / ((bgEl as HTMLImageElement).naturalHeight || 1));
+      const w = "naturalWidth" in bgEl ? bgEl.naturalWidth * s : bgEl.width * s;
+      const h = "naturalHeight" in bgEl ? bgEl.naturalHeight * s : bgEl.height * s;
+      ctx.drawImage(bgEl, (CW - w) / 2, (CH - h) / 2, w, h);
     }
 
     ctx.fillStyle = `rgba(0,0,0,${bgDim})`;
     ctx.fillRect(0, 0, CW, CH);
-
     const grad = ctx.createLinearGradient(0, 0, 0, CH);
     grad.addColorStop(0, "rgba(0,0,0,0.20)");
     grad.addColorStop(0.5, "rgba(0,0,0,0.00)");
@@ -182,7 +198,6 @@ export async function exportVideo({
 
     const tx = (xPosition / 100) * CW;
     const textBlockBottom = CH - (yPosition / 100) * CH;
-
     const words = text.split(" ");
     const lines: string[] = [];
     let cur = "";
@@ -240,7 +255,6 @@ export async function exportVideo({
       const bStep = bW + bGap;
       const numBars = waveRelH.length;
       const totalWW = (numBars - 1) * bStep + bW;
-
       const waveGroupLeft = (waveX / 100) * CW - totalWW / 2;
       const containerBottom = CH - (waveY / 100) * CH;
       const containerH = waveHeight * SC;
@@ -251,17 +265,14 @@ export async function exportVideo({
         const ph = (phase + delay) % (Math.PI * 2);
         const sinVal = (Math.sin(ph) + 1) / 2;
         const scaleFactor = 1 + sinVal * 1.2;
-
         const naturalH = rh * containerH;
         const scaledH = naturalH * scaleFactor;
         const barCenterY = containerBottom - naturalH / 2;
         const barTop = barCenterY - scaledH / 2;
-
         ctx.fillStyle = waveColor;
         ctx.shadowColor = waveColor + "60";
         ctx.shadowBlur = 10 * SC;
         ctx.globalAlpha = 0.85;
-
         const bx = waveGroupLeft + idx * bStep;
         ctx.beginPath();
         if ((ctx as any).roundRect) {
@@ -296,129 +307,144 @@ export async function exportVideo({
     }
   };
 
-  drawFrame(selectedAyahs[0].text, 0);
-  recorder.start(200);
-  const startTime = Date.now();
-
+  const FPS = 30;
+  const frameTime = 1 / FPS;
   let phase = 0;
-  const totalAyahs = selectedAyahs.length;
-  for (let i = 0; i < totalAyahs; i++) {
-    const ayah = selectedAyahs[i];
+  let totalDuration = 0;
+
+  const audioData: { buffer: AudioBuffer | null, duration: number, start: number, ayahIdx: number }[] = [];
+  const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+
+  onProgress(5);
+
+  // LOAD ALL AUDIOS IN PARALLEL
+  const audioPromises = selectedAyahs.map(async (ayah, i) => {
     const sNum = String(selectedSurahNumber).padStart(3, "0");
     const aNum = String(ayah.numberInSurah).padStart(3, "0");
     const audioUrl = `/audio-proxy/${selectedReciterId}/${sNum}${aNum}.mp3`;
 
-    let audioBuffer: AudioBuffer | null = null;
+    let buffer: AudioBuffer | null = null;
+    let dur = 4; // Default duration for missing audio
     try {
       const resp = await fetch(audioUrl);
       if (resp.ok) {
         const ab = await resp.arrayBuffer();
-        audioBuffer = await audioCtx.decodeAudioData(ab);
+        buffer = await audioCtx.decodeAudioData(ab);
+        dur = buffer.duration;
       }
     } catch (e) {
-      console.error("Audio fetch/decode failed", e);
+      console.warn("Failed to load ayah audio", audioUrl);
     }
-
-    const dur = audioBuffer?.duration ?? 4;
-
-    let rafId = -1;
-    let rafRunning = true;
-    let lastTs = -1;
-    const animate = (ts: number) => {
-      if (!rafRunning) return;
-      if (lastTs < 0) lastTs = ts;
-      const dt = (ts - lastTs) / 1000;
-      lastTs = ts;
-      phase += dt * ((2 * Math.PI) / 1.6);
-      drawFrame(ayah.text, phase);
-      rafId = requestAnimationFrame(animate);
-    };
-    rafId = requestAnimationFrame(animate);
-
-    if (audioBuffer) {
-      const src = audioCtx.createBufferSource();
-      src.buffer = audioBuffer;
-      src.connect(exportGain);
-      src.start();
-
-      const startT = audioCtx.currentTime;
-      await new Promise<void>((res) => {
-        const tick = setInterval(() => {
-          const elapsed = audioCtx.currentTime - startT;
-          onProgress(Math.round(((i + Math.min(elapsed / dur, 1)) / totalAyahs) * 100));
-          if (elapsed >= dur) {
-            clearInterval(tick);
-            res();
-          }
-        }, 100);
-        src.onended = () => {
-          clearInterval(tick);
-          res();
-        };
-      });
-    } else {
-      const startT = Date.now();
-      await new Promise<void>((res) => {
-        const tick = setInterval(() => {
-          const elapsed = (Date.now() - startT) / 1000;
-          onProgress(Math.round(((i + Math.min(elapsed / 4, 1)) / totalAyahs) * 100));
-          if (elapsed >= 4) {
-            clearInterval(tick);
-            res();
-          }
-        }, 100);
-      });
-    }
-
-    rafRunning = false;
-    if (rafId !== -1) cancelAnimationFrame(rafId);
-  }
-
-  onProgress(100);
-  silent.stop();
-
-  await new Promise((r) => setTimeout(r, 1000));
-
-  await new Promise<void>((resolve) => {
-    recorder.onstop = () => resolve();
-    recorder.stop();
+    return { buffer, duration: dur, ayahIdx: i };
   });
 
-  if (chunks.length > 0) {
-    const durationMs = Date.now() - startTime;
-    const rawBlob = new Blob(chunks, { type: mimeType });
-    const ext = mimeType.includes("mp4") ? "mp4" : "webm";
-    const dateStr = new Date().toISOString().replace(/[:.]/g, "-");
-    const surahNameSafe = selectedSurah.name.en.replace(/\s+/g, "-");
-    const downloadName = `trteel-${surahNameSafe}-${dateStr}.${ext}`;
+  const results = await Promise.all(audioPromises);
+  for (const res of results) {
+    audioData.push({ ...res, start: totalDuration });
+    totalDuration += res.duration;
+  }
+  onProgress(20);
 
-    const handleDownload = (finalBlob: Blob) => {
-      const url = URL.createObjectURL(finalBlob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = downloadName;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 60000);
-    };
+  // RENDER FRAMES Deterministically
+  const totalFrames = Math.ceil(totalDuration * FPS);
+  const frameBlobs: Blob[] = new Array(totalFrames);
+  
+  // Use a pool of offscreen canvases for blob conversion to avoid blocking the main drawing
+  const blobPoolSize = 6;
+  const blobPool = Array.from({ length: blobPoolSize }, () => {
+    const c = document.createElement("canvas");
+    c.width = CW;
+    c.height = CH;
+    const cx = c.getContext("2d", { alpha: false })!;
+    return { canvas: c, ctx: cx };
+  });
 
-    if (ext === "webm") {
-      // @ts-ignore
-      fixWebmDuration(rawBlob, durationMs)
-        .then(handleDownload)
-        .catch((e: Error) => {
-          console.warn("Failed to fix webm duration:", e);
-          handleDownload(rawBlob);
-        });
-    } else {
-      handleDownload(rawBlob);
+  const blobPromises: Promise<void>[] = [];
+  const CONCURRENCY = 12;
+
+  for (let f = 0; f < totalFrames; f++) {
+    const currentTime = f * frameTime;
+    const currentData = audioData.find(d => currentTime >= d.start && currentTime < d.start + d.duration) || audioData[audioData.length - 1];
+    const ayahText = selectedAyahs[currentData.ayahIdx]?.text || "";
+    
+    phase += frameTime * ((2 * Math.PI) / 1.6);
+    drawFrame(ayahText, phase);
+    
+    // Copy to a pool canvas and start blob conversion
+    const poolIdx = f % blobPoolSize;
+    const poolEl = blobPool[poolIdx];
+    poolEl.ctx.drawImage(canvas, 0, 0);
+    
+    const blobPromise = new Promise<void>(res => {
+      poolEl.canvas.toBlob((b) => {
+        if (b) frameBlobs[f] = b;
+        res();
+      }, "image/jpeg", 0.70);
+    });
+    
+    blobPromises.push(blobPromise);
+    
+    // Throttle promises to avoid memory exhaustion
+    if (blobPromises.length >= CONCURRENCY) {
+      await Promise.all(blobPromises);
+      blobPromises.length = 0;
     }
-  } else {
-    console.error("No chunks collected. Recorder failed.");
-    alert("فشل تصدير الفيديو: لم يتم تجميع أي بيانات. جرّب تقليل عدد الآيات أو استخدام متصفح مغاير.");
+    
+    if (f % 60 === 0) {
+      onProgress(20 + (f / totalFrames) * 60);
+      await new Promise(r => setTimeout(r, 0));
+    }
+  }
+  await Promise.all(blobPromises); // Wait for remaining blobs
+
+  onProgress(85);
+
+  // MIX AUDIO
+  const sampleRate = audioCtx.sampleRate;
+  const offlineCtx = new OfflineAudioContext(2, Math.max(1, Math.ceil(totalDuration * sampleRate)), sampleRate);
+  for (const data of audioData) {
+    if (data.buffer) {
+      const source = offlineCtx.createBufferSource();
+      source.buffer = data.buffer;
+      source.connect(offlineCtx.destination);
+      source.start(data.start);
+    }
+  }
+  const mixedAudioBuffer = await offlineCtx.startRendering();
+  const audioBlob = audioBufferToWav(mixedAudioBuffer);
+
+  onProgress(90);
+
+  // POST TO SERVER
+  const qualityData = EXPORT_QUALITIES.find(q => q.id === exportQuality) || EXPORT_QUALITIES[1];
+  const formData = new FormData();
+  formData.append("audio", audioBlob);
+  frameBlobs.forEach((blob, idx) => {
+    formData.append("frames", blob, `frame_${String(idx).padStart(6, '0')}.jpg`);
+  });
+  formData.append("settings", JSON.stringify({
+    bitrate: qualityData.bitrate,
+    fps: FPS,
+    preset: exportPreset
+  }));
+
+  try {
+    const response = await fetch("/api/export", { method: "POST", body: formData });
+    if (!response.ok) throw new Error(await response.text());
+
+    const finalBlob = await response.blob();
+    const downloadName = `trteel-${selectedSurah.name.en.replace(/\s+/g, "-")}-${new Date().getTime()}.mp4`;
+    const url = URL.createObjectURL(finalBlob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = downloadName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    onProgress(100);
+  } catch (error: any) {
+    alert("Export failed: " + error.message);
   }
 
-  document.body.removeChild(canvas);
   audioCtx.close();
 }

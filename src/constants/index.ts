@@ -34,3 +34,17 @@ export const ASPECT_RATIOS: AspectRatio[] = [
 ];
 
 export const BACKGROUNDS = [bg1, bg2, bg3, bg4, bg5];
+
+export const EXPORT_PRESETS = [
+  { id: "story", label: "Instagram Story", ratio: "9/16" },
+  { id: "post", label: "Instagram Post", ratio: "1/1" },
+  { id: "tiktok", label: "TikTok", ratio: "9/16" },
+  { id: "youtube", label: "YouTube", ratio: "16/9" },
+  { id: "whatsapp", label: "WhatsApp Status", ratio: "9/16" },
+];
+
+export const EXPORT_QUALITIES = [
+  { id: "low", label: "Low (3 Mbps)", bitrate: "3000k" },
+  { id: "medium", label: "Medium (5 Mbps)", bitrate: "5000k" },
+  { id: "high", label: "High (8 Mbps)", bitrate: "8000k" },
+];

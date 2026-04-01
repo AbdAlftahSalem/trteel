@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { SettingAccordion } from "./SettingAccordion";
 import { EditorState } from "@/types";
-import { ASPECT_RATIOS, BACKGROUNDS, surahs, reciters } from "@/constants";
+import { ASPECT_RATIOS, BACKGROUNDS, surahs, reciters, EXPORT_PRESETS, EXPORT_QUALITIES } from "@/constants";
 import { parseAyah } from "@/utils/mathHelpers";
 
 export interface SettingsSidebarProps {
@@ -60,10 +60,16 @@ export function SettingsSidebar({
     waveX,
     showWatermark,
     watermarkMode,
+    watermarkImage,
+    watermarkText,
+    watermarkTextColor,
     watermarkSize,
     watermarkOpacity,
     watermarkX,
     watermarkY,
+    exportQuality,
+    exportPreset,
+    showSafeArea,
   } = state;
 
   const handleSurahChange = (nextSurahNumber: number) => {
@@ -86,6 +92,16 @@ export function SettingsSidebar({
   const handleToAyahChange = (value: string) => {
     const nextTo = parseAyah(value, toAyah, fromAyah, maxAyah);
     updateState({ toAyah: nextTo });
+  };
+
+  const handlePresetChange = (presetId: string) => {
+    const preset = EXPORT_PRESETS.find((p) => p.id === presetId);
+    if (preset) {
+      updateState({
+        exportPreset: presetId as any,
+        aspectRatio: preset.ratio,
+      });
+    }
   };
 
   return (
@@ -488,6 +504,77 @@ export function SettingsSidebar({
           </SettingAccordion>
 
           <SettingAccordion
+            id="export_engine"
+            title="محرك التصدير (Export Engine)"
+            icon={<Clapperboard size={16} />}
+            isActive={activeAccordion === "export_engine"}
+            onToggle={setActiveAccordion}
+            isDarkMode={isDarkMode}
+          >
+            <div className="space-y-5">
+              <div>
+                <label className={`mb-2 block text-[11px] font-bold ${isDarkMode ? "text-[#6e7786]" : "text-[#81899a]"}`}>
+                  قالب النشر (Preset)
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {EXPORT_PRESETS.map((p) => (
+                    <button
+                      key={p.id}
+                      onClick={() => handlePresetChange(p.id)}
+                      className={`flex items-center justify-center rounded-xl border py-2.5 px-2 text-center text-[10px] font-bold transition-all ${
+                        exportPreset === p.id
+                          ? "border-[#1677ff] bg-[#1677ff]/10 text-[#1677ff]"
+                          : isDarkMode
+                          ? "border-[#2f3545] bg-[#252c3c] text-[#8a93a5]"
+                          : "border-[#e3e7ef] bg-white text-[#5b6373]"
+                      }`}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className={`mb-2 block text-[11px] font-bold ${isDarkMode ? "text-[#6e7786]" : "text-[#81899a]"}`}>
+                  جودة الفيديو (Quality)
+                </label>
+                <div className="flex rounded-xl p-1 bg-black/5 dark:bg-white/5">
+                  {EXPORT_QUALITIES.map((q) => (
+                    <button
+                      key={q.id}
+                      onClick={() => updateState({ exportQuality: q.id as any })}
+                      className={`flex-1 rounded-lg py-2 text-[10px] font-bold transition-all ${
+                        exportQuality === q.id
+                          ? "bg-[#1677ff] text-white shadow-lg shadow-[#1677ff]/30"
+                          : "text-[#8a93a5] hover:text-[#1677ff]"
+                      }`}
+                    >
+                      {q.id.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="border-t border-[#ebedf2] dark:border-[#2f3545] pt-4">
+                <button
+                  type="button"
+                  onClick={() => updateState({ showSafeArea: !showSafeArea })}
+                  className="flex w-full items-center justify-between py-1 text-right"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs font-bold ${isDarkMode ? "text-white" : "text-[#1f2532]"}`}>منطقة الأمان (Safe Area)</span>
+                  </div>
+                  <div className={`relative h-5 w-9 rounded-full transition-colors ${showSafeArea ? "bg-[#1677ff]" : "bg-[#dde1ea] dark:bg-[#2f3545]"}`}>
+                    <span className={`absolute top-1 h-3 w-3 rounded-full bg-white transition-all ${showSafeArea ? "left-1" : "left-5"}`} />
+                  </div>
+                </button>
+                <p className="mt-1 text-[9px] text-[#6e7786]">أظهر حدود مناطق الأمان لمنصات التواصل لتجنب تغطية النصوص</p>
+              </div>
+            </div>
+          </SettingAccordion>
+
+          <SettingAccordion
             id="watermark"
             title="العلامة المائية (Logo)"
             icon={<MoveVertical size={16} />}
@@ -536,6 +623,77 @@ export function SettingsSidebar({
                       نص
                     </button>
                   </div>
+
+                  {watermarkMode === "image" && (
+                    <div className="mt-2 text-right">
+                       <label className={`flex h-16 cursor-pointer items-center justify-center gap-3 rounded-xl border-2 border-dashed transition-all ${
+                          isDarkMode ? "border-[#2f3545] bg-[#252c3c] hover:bg-[#2c3346]" : "border-[#dce6f8] bg-white hover:bg-[#eef4ff]"
+                       }`}>
+                         {watermarkImage ? (
+                           <div className="flex items-center gap-3 px-4 w-full">
+                             <div className="relative h-10 w-10 overflow-hidden rounded-lg border border-[#ebedf2] dark:border-[#2f3545]">
+                               <img src={watermarkImage} className="object-contain w-full h-full" alt="Logo preview" />
+                             </div>
+                             <div className="flex flex-col">
+                               <span className="text-[10px] font-bold text-[#1677ff]">تم رفع الشعار</span>
+                               <span className="text-[9px] text-[#8a93a5]">اضغط لتغيير الصورة</span>
+                             </div>
+                           </div>
+                         ) : (
+                           <>
+                             <ImagePlus size={16} className="text-[#1677ff]" />
+                             <span className="text-[10px] font-bold text-[#8a93a5]">رفع شعار (Logo)</span>
+                           </>
+                         )}
+                         <input
+                           type="file"
+                           hidden
+                           accept="image/*"
+                           onChange={(e) => {
+                             const file = e.target.files?.[0];
+                             if (file) {
+                               const reader = new FileReader();
+                               reader.onload = (event) => updateState({ watermarkImage: event.target?.result as string });
+                               reader.readAsDataURL(file);
+                             }
+                           }}
+                         />
+                       </label>
+                    </div>
+                  )}
+
+                  {watermarkMode === "text" && (
+                    <div className="mt-2 space-y-3 text-right" dir="rtl">
+                      <div>
+                        <div className="mb-1 text-[10px] font-bold text-[#81899a]">نص الشعار</div>
+                        <input
+                          type="text"
+                          value={watermarkText}
+                          onChange={(e) => updateState({ watermarkText: e.target.value })}
+                          className={`h-10 w-full rounded-xl border px-3 text-sm font-bold outline-none focus:border-[#1677ff] transition-all ${
+                            isDarkMode ? "bg-[#252c3c] border-[#2f3545] text-white" : "bg-white border-[#e3e7ef] text-[#1f2532]"
+                          }`}
+                          placeholder="اكتب اسم القناة أو الشعار..."
+                        />
+                      </div>
+                      <div>
+                        <div className="mb-1 text-[10px] font-bold text-[#81899a]">لون النص</div>
+                        <div className={`flex items-center gap-2 h-10 px-2 border rounded-xl overflow-hidden ${
+                            isDarkMode ? "bg-[#252c3c] border-[#2f3545]" : "bg-white border-[#e3e7ef]"
+                        }`}>
+                          <input
+                            type="color"
+                            value={watermarkTextColor}
+                            onChange={(e) => updateState({ watermarkTextColor: e.target.value })}
+                            className="h-6 w-6 cursor-pointer border-0 bg-transparent"
+                          />
+                          <span className={`text-[9px] font-mono font-bold uppercase truncate ${
+                              isDarkMode ? "text-[#8a93a5]" : "text-[#5b6373]"
+                          }`}>{watermarkTextColor}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <div className="mb-1 text-[10px] font-bold text-[#81899a]">الحجم</div>

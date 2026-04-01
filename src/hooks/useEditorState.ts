@@ -38,6 +38,9 @@ export function useEditorState() {
     bgDim: 0.3,
     selectedReciterId: reciters[0].id,
     isDarkMode: false,
+    exportQuality: "medium",
+    exportPreset: "story",
+    showSafeArea: false,
   });
 
   const updateState = useCallback(
