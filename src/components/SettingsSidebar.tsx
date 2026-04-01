@@ -1,7 +1,6 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import {
-  UserRound,
   Palette,
   Moon,
   Layers,
@@ -11,11 +10,12 @@ import {
   AudioLines,
   MoveVertical,
   Clapperboard,
-  Film,
   UploadCloud,
   Scissors,
   Zap,
   Sparkles,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
 import { SettingAccordion } from "./SettingAccordion";
 import { EditorState } from "@/types";
@@ -40,6 +40,16 @@ export function SettingsSidebar({
   handleExport,
 }: SettingsSidebarProps) {
   const [activeAccordion, setActiveAccordion] = useState<string>("selection");
+  const [settingsMode, setSettingsMode] = useState<"simple" | "advanced">("simple");
+
+  useEffect(() => {
+    if (settingsMode === "simple") {
+      setActiveAccordion((current) => {
+        const hiddenInSimple = ["translation", "kinetic", "wave", "audio_effects", "watermark"];
+        return hiddenInSimple.includes(current) ? "selection" : current;
+      });
+    }
+  }, [settingsMode]);
 
   const {
     isDarkMode,
@@ -51,6 +61,7 @@ export function SettingsSidebar({
     bgType,
     bgImage,
     bgVideo,
+    bgVideoMuted,
     bgVideoRange,
     bgDim,
     bgBlur,
@@ -128,44 +139,33 @@ export function SettingsSidebar({
 
   return (
     <aside
-      className={`flex h-full w-full flex-1 flex-col transition-colors duration-500 md:max-w-[450px] md:border-l ${
-        isDarkMode ? "bg-[#161a23] border-[#212735]" : "bg-white border-[#dde1ea]"
+      className={`flex h-full w-full flex-1 flex-col transition-colors duration-500 md:max-w-[460px] md:border-l ${
+        isDarkMode ? "bg-[#0d171a] border-[#1f373d]" : "bg-[#f9fdf9] border-[#d5e1d8]"
       }`}
       dir="rtl"
     >
       <header
-        className={`flex items-center justify-between border-b px-6 py-5 transition-colors ${
-          isDarkMode ? "border-[#212735]" : "border-[#eceff4]"
+        className={`sticky top-0 z-20 flex items-center justify-between border-b px-5 py-4 backdrop-blur-md transition-colors ${
+          isDarkMode ? "border-[#1f373d] bg-[#0d171a]/90" : "border-[#dfe9e1] bg-[#f9fdf9]/90"
         }`}
       >
         <div className="text-right">
-          <p className={`text-xl font-extrabold ${isDarkMode ? "text-[#3489ff]" : "text-[#1677ff]"}`}>
+          <p className={`text-2xl font-black tracking-tight ${isDarkMode ? "text-[#47c6dd]" : "text-[#0d8f5b]"}`}>
             ترتيل
           </p>
-          <p className={`text-[10px] font-bold ${isDarkMode ? "text-[#8a93a5]" : "text-[#8a93a5]"}`}>
-            استوديو فيديوهات القرآن الكريم
+          <p className={`text-[10px] font-bold tracking-[0.12em] ${isDarkMode ? "text-[#8ea1a6]" : "text-[#667a71]"}`}>
+            QURAN VIDEO STUDIO
           </p>
         </div>
 
         <div className="flex items-center gap-2">
           <button
             type="button"
-            className={`flex h-11 w-11 items-center justify-center rounded-xl border transition-all ${
-              isDarkMode
-                ? "border-[#2f3545] bg-[#212735] text-[#3489ff]"
-                : "border-[#dce6f8] bg-[#eef4ff] text-[#1f6feb]"
-            }`}
-            aria-label="الملف الشخصي"
-          >
-            <UserRound size={20} />
-          </button>
-          <button
-            type="button"
             onClick={() => updateState({ isDarkMode: !isDarkMode })}
             className={`flex h-11 w-11 items-center justify-center rounded-xl border transition-all ${
               isDarkMode
-                ? "border-[#2f3545] bg-[#212735] text-[#ffcc33]"
-                : "border-[#e7e7eb] bg-[#f4f4f6] text-[#303540]"
+                ? "border-[#355d66] bg-[#17353c] text-[#ffd35f]"
+                : "border-[#e2ded2] bg-[#fbf6ea] text-[#5f5a47]"
             }`}
             aria-label="الوضع الليلي"
           >
@@ -174,15 +174,59 @@ export function SettingsSidebar({
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto px-6 py-7">
-        <h1 className={`text-2xl font-extrabold transition-colors ${isDarkMode ? "text-white" : "text-[#1f2532]"}`}>
+      <div className="custom-scrollbar flex-1 overflow-y-auto px-5 py-6">
+        <h1 className={`text-2xl font-black transition-colors ${isDarkMode ? "text-white" : "text-[#19342b]"}`}>
           إعدادات العرض
         </h1>
-        <p className={`mt-1 text-sm font-medium transition-colors ${isDarkMode ? "text-[#8a93a5]" : "text-[#6a7385]"}`}>
-          تحكّم في أبعاد المقطع وموقع النصوص والآيات المختارة
+        <p className={`mt-1 text-sm font-medium transition-colors ${isDarkMode ? "text-[#9aadb2]" : "text-[#61796f]"}`}>
+          اضبط كل شيء بسرعة: السورة، التصميم، الحركة، والتصدير.
         </p>
 
-        <div className="mt-7 space-y-3 pb-20">
+        <div className={`mt-4 rounded-xl border p-1 ${isDarkMode ? "border-[#284249] bg-[#122429]" : "border-[#cfe0d3] bg-[#eef7f0]"}`}>
+          <div className="grid grid-cols-2 gap-1">
+            <button
+              type="button"
+              onClick={() => setSettingsMode("simple")}
+              className={`h-9 rounded-lg text-xs font-extrabold transition-all ${
+                settingsMode === "simple"
+                  ? isDarkMode
+                    ? "bg-[#2eaec2] text-[#072126]"
+                    : "bg-[#0d8f5b] text-white"
+                  : isDarkMode
+                  ? "text-[#9db0b5]"
+                  : "text-[#567267]"
+              }`}
+            >
+              إعدادات بسيطة
+            </button>
+            <button
+              type="button"
+              onClick={() => setSettingsMode("advanced")}
+              className={`h-9 rounded-lg text-xs font-extrabold transition-all ${
+                settingsMode === "advanced"
+                  ? isDarkMode
+                    ? "bg-[#2eaec2] text-[#072126]"
+                    : "bg-[#0d8f5b] text-white"
+                  : isDarkMode
+                  ? "text-[#9db0b5]"
+                  : "text-[#567267]"
+              }`}
+            >
+              كل الإعدادات
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-4 space-y-3 pb-20" data-settings-mode={settingsMode}>
+          <style jsx>{`
+            [data-settings-mode="simple"] :global([data-section="translation"]),
+            [data-settings-mode="simple"] :global([data-section="kinetic"]),
+            [data-settings-mode="simple"] :global([data-section="wave"]),
+            [data-settings-mode="simple"] :global([data-section="audio_effects"]),
+            [data-settings-mode="simple"] :global([data-section="watermark"]) {
+              display: none;
+            }
+          `}</style>
           <SettingAccordion
             id="dimensions"
             title="أبعاد المقطع"
@@ -479,6 +523,43 @@ export function SettingsSidebar({
                 </label>
                 {bgVideo && (
                   <div className="rounded-xl border border-[#ebedf2] dark:border-[#2f3545] p-3">
+                    <button
+                      type="button"
+                      onClick={() => updateState({ bgVideoMuted: !bgVideoMuted })}
+                      className={`mb-3 flex w-full items-center justify-between rounded-xl border px-3 py-2.5 text-right transition-all ${
+                        isDarkMode
+                          ? "border-[#335f69] bg-[#1d2f3a] hover:bg-[#243948]"
+                          : "border-[#cfe0d3] bg-[#f3faf5] hover:bg-[#edf7f0]"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <div
+                          className={`flex h-8 w-8 items-center justify-center rounded-lg ${
+                            bgVideoMuted
+                              ? isDarkMode
+                                ? "bg-[#1677ff]/20 text-[#7fb6ff]"
+                                : "bg-[#1677ff]/10 text-[#1677ff]"
+                              : isDarkMode
+                              ? "bg-[#1f6b50]/25 text-[#6be4aa]"
+                              : "bg-[#0d8f5b]/10 text-[#0d8f5b]"
+                          }`}
+                        >
+                          {bgVideoMuted ? <VolumeX size={14} /> : <Volume2 size={14} />}
+                        </div>
+                        <div className="text-right leading-tight">
+                          <div className={`text-[11px] font-extrabold ${isDarkMode ? "text-white" : "text-[#1f2532]"}`}>
+                            كتم صوت فيديو الخلفية
+                          </div>
+                          <div className={`text-[9px] font-bold ${isDarkMode ? "text-[#8ea1a6]" : "text-[#748678]"}`}>
+                            {bgVideoMuted ? "مفعل" : "غير مفعل"}
+                          </div>
+                        </div>
+                      </div>
+                      <div className={`relative h-5 w-10 rounded-full transition-colors ${bgVideoMuted ? "bg-[#1677ff]" : isDarkMode ? "bg-[#2f3545]" : "bg-[#dde1ea]"}`}>
+                        <span className={`absolute top-1 h-3 w-3 rounded-full bg-white transition-all ${bgVideoMuted ? "left-1" : "left-6"}`} />
+                      </div>
+                    </button>
+
                     <div className="flex items-center justify-between mb-2">
                        <div className="flex items-center gap-2">
                           <Scissors size={12} className="text-[#1677ff]" />
@@ -1115,14 +1196,14 @@ export function SettingsSidebar({
 
       <footer
         className={`flex flex-col gap-4 border-t p-5 transition-colors ${
-          isDarkMode ? "bg-[#161a23] border-[#212735]" : "bg-white border-[#eceff4]"
+          isDarkMode ? "bg-[#0d171a] border-[#1f373d]" : "bg-[#f9fdf9] border-[#dfe9e1]"
         }`}
       >
         <button
           type="button"
           onClick={handleExport}
           disabled={isExporting}
-          className="group relative flex h-16 w-full items-center justify-center gap-2 overflow-hidden rounded-2xl bg-gradient-to-r from-[#0f73ff] to-[#3489ff] text-xl font-extrabold text-white shadow-[0_14px_32px_rgba(15,115,255,0.35)] transition-all hover:brightness-105 active:scale-[0.98] disabled:opacity-70"
+          className="group relative flex h-16 w-full items-center justify-center gap-2 overflow-hidden rounded-2xl bg-gradient-to-r from-[#0d8f5b] to-[#0f6d8a] text-xl font-extrabold text-white shadow-[0_14px_32px_rgba(13,143,91,0.35)] transition-all hover:brightness-105 active:scale-[0.98] disabled:opacity-70"
         >
           {isExporting ? (
             <div className="flex flex-col items-center">
@@ -1141,7 +1222,7 @@ export function SettingsSidebar({
             <>
               <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-1000 group-hover:translate-x-full" />
               <Clapperboard size={22} className="transition-transform group-hover:rotate-12" />
-              <span>تصدير المقطع </span>
+              <span>تصدير المقطع</span>
             </>
           )}
         </button>

@@ -1,14 +1,22 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ececf1;
-  --foreground: #141927;
+  --background: #f3f6f3;
+  --foreground: #182120;
+  --surface: #ffffff;
+  --surface-muted: #edf2ed;
+  --line: #d5dfd7;
+  --brand: #0d8f5b;
+  --brand-2: #0f6d8a;
+  --accent: #f59e0b;
+  --danger: #dc2626;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-tajawal);
+  --font-display: var(--font-cairo);
 }
 
 *,
@@ -27,26 +35,74 @@ body {
   font-family: var(--font-tajawal), "Segoe UI", Tahoma, sans-serif;
 }
 
+body {
+  background-image:
+    radial-gradient(circle at 8% 12%, rgba(13, 143, 91, 0.14), transparent 40%),
+    radial-gradient(circle at 92% 84%, rgba(15, 109, 138, 0.12), transparent 42%),
+    linear-gradient(135deg, #f4f7f4 0%, #eef3ef 50%, #f9f5ea 100%);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-cairo), var(--font-tajawal), sans-serif;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+input[type="range"] {
+  accent-color: var(--brand);
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  box-shadow: 0 0 0 4px rgba(13, 143, 91, 0.14);
+}
+
+.app-noise::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.2;
+  background-image: radial-gradient(rgba(24, 33, 32, 0.08) 0.5px, transparent 0.5px);
+  background-size: 3px 3px;
+}
+
+.glass-panel {
+  backdrop-filter: blur(14px);
+  background: color-mix(in srgb, var(--surface) 86%, transparent);
+  border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+}
+
 .custom-scrollbar::-webkit-scrollbar {
-  width: 4px;
+  width: 7px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
+  background: rgba(24, 33, 32, 0.06);
+  border-radius: 999px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(13, 143, 91, 0.8), rgba(15, 109, 138, 0.85));
+  border-radius: 999px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.4);
+  background: linear-gradient(180deg, rgba(13, 143, 91, 1), rgba(15, 109, 138, 1));
 }
 
 .custom-scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+  scrollbar-color: rgba(13, 143, 91, 0.8) rgba(24, 33, 32, 0.06);
 }
 
 @keyframes wave-bounce {
@@ -66,5 +122,16 @@ body {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes intro-rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }

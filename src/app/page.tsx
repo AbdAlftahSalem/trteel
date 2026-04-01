@@ -63,48 +63,79 @@ export default function Home() {
     <>
       <style jsx global>{`
         ::-webkit-scrollbar {
-          width: 8px;
+          width: 9px;
         }
         ::-webkit-scrollbar-track {
-          background: ${state.isDarkMode ? "#0a0c10" : "#ececf1"};
+          background: ${state.isDarkMode ? "#0f1619" : "#dde8de"};
         }
         ::-webkit-scrollbar-thumb {
-          background: ${state.isDarkMode ? "#2f3545" : "#ccc"};
+          background: ${state.isDarkMode ? "#2f6f77" : "#1b8a64"};
           border-radius: 10px;
         }
         ::-webkit-scrollbar-thumb:hover {
-          background: ${state.isDarkMode ? "#3c435a" : "#999"};
+          background: ${state.isDarkMode ? "#3f8c96" : "#106e4d"};
         }
         scrollbar-width: thin;
-        scrollbar-color: ${state.isDarkMode ? "#2f3545 #0a0c10" : "#ccc #ececf1"};
+        scrollbar-color: ${state.isDarkMode ? "#2f6f77 #0f1619" : "#1b8a64 #dde8de"};
       `}</style>
       <main
-        className={`flex h-[100dvh] w-full items-center justify-center p-1.5 md:p-5 transition-colors duration-500 ${
-          state.isDarkMode ? "bg-[#0a0c10]" : "bg-[#ececf1]"
+        className={`app-noise relative flex h-[100dvh] w-full items-center justify-center overflow-hidden p-2 transition-colors duration-500 md:p-5 ${
+          state.isDarkMode ? "bg-[#081113]" : "bg-[#eef4ef]"
         }`}
         dir="ltr"
       >
-        <section
-          className={`relative flex h-full w-full max-w-[1720px] flex-col-reverse overflow-hidden rounded-[24px] border transition-colors duration-500 shadow-[0_24px_70px_rgba(16,24,40,0.12)] md:flex-row ${
-            state.isDarkMode ? "bg-[#11141d] border-[#1d232e]" : "bg-[#efeff3] border-[#d9dbe3]"
+        <div
+          className={`pointer-events-none absolute -left-20 top-0 h-80 w-80 rounded-full blur-3xl ${
+            state.isDarkMode ? "bg-[#11606e]/40" : "bg-[#94d6bd]/60"
           }`}
+        />
+        <div
+          className={`pointer-events-none absolute -bottom-20 right-10 h-96 w-96 rounded-full blur-3xl ${
+            state.isDarkMode ? "bg-[#085f50]/30" : "bg-[#9fd9f3]/55"
+          }`}
+        />
+
+        <section
+          className={`relative flex h-full w-full max-w-[1740px] flex-col-reverse overflow-hidden rounded-[28px] border shadow-[0_30px_90px_rgba(10,18,14,0.22)] transition-all duration-500 md:flex-row ${
+            state.isDarkMode
+              ? "glass-panel border-[#204046] bg-gradient-to-br from-[#0e1a1d] to-[#0a1416]"
+              : "glass-panel border-[#d4e1d8] bg-gradient-to-br from-[#f4fbf6] to-[#ebf2ee]"
+          }`}
+          style={{ animation: "intro-rise 500ms ease-out" }}
         >
           <div
-            className={`relative flex flex-[1.4] items-center justify-center p-6 md:flex-1 md:p-12 transition-colors duration-500 ${
-              state.isDarkMode ? "bg-[#161a23]" : "bg-[#ebedf2]"
+            className={`relative flex flex-[1.4] items-center justify-center p-4 transition-colors duration-500 md:flex-1 md:p-10 ${
+              state.isDarkMode ? "bg-[#0d1719]" : "bg-[#e8f0ea]"
             }`}
           >
+            <div className="absolute left-5 top-5 z-20 flex items-center gap-2">
+              <span
+                className={`rounded-full px-3 py-1 text-[10px] font-extrabold tracking-wide ${
+                  state.isDarkMode ? "bg-[#10333b] text-[#7be1ff]" : "bg-[#dcfff0] text-[#0a7b53]"
+                }`}
+              >
+                Studio Live Preview
+              </span>
+              <span
+                className={`rounded-full px-3 py-1 text-[10px] font-bold ${
+                  state.isDarkMode ? "bg-white/8 text-[#c4d2d6]" : "bg-white/80 text-[#33413e]"
+                }`}
+              >
+                {selectedSurah.name.ar} • {state.fromAyah}-{state.toAyah}
+              </span>
+            </div>
+
             <div
               className={`pointer-events-none absolute -left-20 top-8 h-56 w-56 rounded-full blur-3xl transition-colors ${
-                state.isDarkMode ? "bg-[#16274d]" : "bg-[#d5e4ff]"
+                state.isDarkMode ? "bg-[#0f3a56]" : "bg-[#caecdc]"
               }`}
             />
             <div
               className={`pointer-events-none absolute -bottom-16 right-8 h-64 w-64 rounded-full blur-3xl transition-colors ${
-                state.isDarkMode ? "bg-[#1a1740]" : "bg-[#d9dbff]"
+                state.isDarkMode ? "bg-[#123636]" : "bg-[#cfe2f7]"
               }`}
             />
-            
+
             <VideoPreview
               state={state}
               selectedAyahs={selectedAyahs}

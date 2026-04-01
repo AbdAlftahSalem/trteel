@@ -27,6 +27,7 @@ export function useEditorState() {
     bgType: "image",
     bgImage: BACKGROUNDS[0],
     bgVideo: null,
+    bgVideoMuted: true,
     bgVideoRange: [0, 10], // Default 10s range
     bgVideoDuration: 0,
     showWatermark: false,

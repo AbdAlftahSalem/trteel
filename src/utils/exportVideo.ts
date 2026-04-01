@@ -112,6 +112,7 @@ export async function exportVideo({
     exportPreset,
     bgType,
     bgVideo,
+    bgVideoMuted,
     bgVideoRange,
     showAyahGlassEffect,
     ayahGlassBlur,
@@ -165,7 +166,7 @@ export async function exportVideo({
   if (bgType === "video" && bgVideo) {
     videoBG = document.createElement("video");
     videoBG.src = bgVideo;
-    videoBG.muted = true;
+    videoBG.muted = bgVideoMuted;
     videoBG.preload = "auto";
     videoBG.crossOrigin = "anonymous";
     await new Promise((resolve) => {

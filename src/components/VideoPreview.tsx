@@ -37,6 +37,7 @@ export function VideoPreview({
     bgType,
     bgImage,
     bgVideo,
+    bgVideoMuted,
     bgVideoRange,
     bgBlur,
     bgDim,
@@ -140,7 +141,7 @@ export function VideoPreview({
   return (
     <div
       ref={previewRef}
-      className="relative h-full max-h-[min(85vh,720px)] w-auto max-w-full overflow-hidden rounded-[34px] border-[6px] border-[#20252e] shadow-[0_30px_80px_rgba(10,16,28,0.35)] transition-all duration-500 ease-in-out"
+      className="relative h-full max-h-[min(85vh,720px)] w-auto max-w-full overflow-hidden rounded-[36px] border-[6px] border-[#1e3630] shadow-[0_34px_90px_rgba(4,22,18,0.4)] transition-all duration-500 ease-in-out"
       style={{ aspectRatio }}
     >
       {bgType === "image" ? (
@@ -160,7 +161,7 @@ export function VideoPreview({
           <video
             ref={bgVideoRef}
             src={bgVideo}
-            muted
+            muted={bgVideoMuted}
             loop
             playsInline
             className="absolute inset-0 h-full w-full object-cover"
@@ -191,7 +192,7 @@ export function VideoPreview({
         className={`absolute inset-0 transition-all duration-500`}
         style={{ backgroundColor: `rgba(0, 0, 0, ${bgDim})` }}
       />
-      <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/60 pointer-events-none" />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/15 via-transparent to-black/70" />
 
       <div className="absolute inset-0 z-30 group/player">
         <div className="absolute inset-0 cursor-pointer pointer-events-auto" onClick={togglePlayback} />
@@ -199,14 +200,14 @@ export function VideoPreview({
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div className={`transition-all duration-300 ${isPlaying ? "opacity-0 scale-150" : "opacity-100 scale-100"}`}>
             {!isPlaying && (
-              <div className="flex h-24 w-24 items-center justify-center rounded-full bg-black/40 backdrop-blur-xl border border-white/20 text-white shadow-2xl">
-                <Play fill="white" size={48} className="translate-x-1" />
+              <div className="flex h-24 w-24 items-center justify-center rounded-full border border-white/30 bg-black/45 text-white shadow-2xl backdrop-blur-xl">
+                <Play fill="white" size={46} className="translate-x-1" />
               </div>
             )}
           </div>
         </div>
 
-        <div className="absolute bottom-0 left-0 right-0 p-6 pointer-events-none opacity-0 group-hover/player:opacity-100 transition-all duration-500 translate-y-4 group-hover/player:translate-y-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent">
+        <div className="pointer-events-none absolute bottom-0 left-0 right-0 translate-y-4 bg-gradient-to-t from-black/85 via-black/45 to-transparent p-6 opacity-0 transition-all duration-500 group-hover/player:translate-y-0 group-hover/player:opacity-100">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-4 pointer-events-auto">
               <button
@@ -215,7 +216,7 @@ export function VideoPreview({
                   currentAyahIndex > 0 && setCurrentAyahIndex((prev) => prev - 1);
                 }}
                 disabled={currentAyahIndex === 0}
-                className="h-10 w-10 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-all disabled:opacity-30"
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition-all hover:bg-white/20 disabled:opacity-30"
               >
                 <SkipForward size={20} />
               </button>
@@ -224,7 +225,7 @@ export function VideoPreview({
                   e.stopPropagation();
                   togglePlayback();
                 }}
-                className="h-12 w-12 flex items-center justify-center rounded-full bg-white text-[#1677ff] hover:scale-110 transition-all shadow-lg"
+                className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-[#0d8f5b] shadow-lg transition-all hover:scale-110"
               >
                 {isPlaying ? <Pause fill="currentColor" size={24} /> : <Play fill="currentColor" size={24} className="translate-x-0.5" />}
               </button>
@@ -234,13 +235,13 @@ export function VideoPreview({
                   currentAyahIndex < selectedAyahs.length - 1 && setCurrentAyahIndex((prev) => prev + 1);
                 }}
                 disabled={currentAyahIndex === selectedAyahs.length - 1}
-                className="h-10 w-10 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-all disabled:opacity-30"
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition-all hover:bg-white/20 disabled:opacity-30"
               >
                 <SkipBack size={20} />
               </button>
             </div>
             <div className="text-right pointer-events-none">
-              <div className="text-[10px] font-bold uppercase tracking-widest text-[#1677ff] mb-1">الآن يعرض</div>
+              <div className="mb-1 text-[10px] font-bold uppercase tracking-widest text-[#56e0ab]">الآن يعرض</div>
               <div className="text-xs font-bold text-white">
                 آية {selectedAyahs[currentAyahIndex]?.numberInSurah} من {maxAyah}
               </div>
@@ -248,7 +249,7 @@ export function VideoPreview({
           </div>
           <div className="relative h-1.5 w-full rounded-full bg-white/20 overflow-hidden group/bar pointer-events-auto cursor-pointer">
             <div
-              className={`absolute top-0 right-0 h-full bg-[#1677ff] transition-all duration-300 shadow-[0_0_15px_rgba(22,119,255,0.8)]`}
+              className="absolute right-0 top-0 h-full bg-[#1cd792] shadow-[0_0_15px_rgba(28,215,146,0.8)] transition-all duration-300"
               style={{ width: `${((currentAyahIndex + 1) / (selectedAyahs.length || 1)) * 100}%` }}
             />
           </div>

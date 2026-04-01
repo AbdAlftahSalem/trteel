@@ -1,11 +1,17 @@
 import type { Metadata } from "next";
-import { Tajawal } from "next/font/google";
+import { Cairo, Tajawal } from "next/font/google";
 import "./globals.css";
 
 const tajawal = Tajawal({
   variable: "--font-tajawal",
   subsets: ["arabic"],
   weight: ["300", "400", "500", "700"],
+});
+
+const cairo = Cairo({
+  variable: "--font-cairo",
+  subsets: ["arabic"],
+  weight: ["600", "700", "800"],
 });
 
 export const metadata: Metadata = {
@@ -19,7 +25,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ar" dir="rtl" className={`${tajawal.variable} antialiased`} suppressHydrationWarning>
+    <html lang="ar" dir="rtl" className={`${tajawal.variable} ${cairo.variable} antialiased`} suppressHydrationWarning>
       <body className="min-h-screen bg-gray-50 flex flex-col font-sans">
         {children}
       </body>

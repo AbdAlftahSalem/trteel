@@ -63,6 +63,7 @@ export type EditorState = {
   bgType: "image" | "video";
   bgImage: any;
   bgVideo: string | null;
+  bgVideoMuted: boolean;
   bgVideoRange: [number, number];
   bgVideoDuration: number;
   showWatermark: boolean;
