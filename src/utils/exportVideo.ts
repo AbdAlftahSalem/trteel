@@ -79,6 +79,8 @@ export async function exportVideo({
   const {
     aspectRatio,
     bgImage,
+    bgImages,
+    // Settings for the video background
     bgBlur,
     bgDim,
     showWave,
@@ -157,9 +159,33 @@ export async function exportVideo({
     });
   };
 
-  const bgSrc = typeof bgImage === "string" ? bgImage : bgImage?.src;
+  const bgSrc = typeof bgImage === "string" ? bgImage : (bgImage as any)?.src;
   const bgElInput = bgSrc ? await loadEl(bgSrc) : null;
   let bgEl: HTMLImageElement | HTMLCanvasElement | null = bgElInput;
+
+  // Pre-load and blur all background images if they exist
+  const bgElements: (HTMLImageElement | HTMLCanvasElement)[] = [];
+  if (bgType === "image" && bgImages && bgImages.length > 0) {
+    for (const img of bgImages) {
+        const el = await loadEl(img.url);
+        if (el) {
+            if (bgBlur > 0) {
+                const blurCanvas = document.createElement("canvas");
+                blurCanvas.width = CW;
+                blurCanvas.height = CH;
+                const bCtx = blurCanvas.getContext("2d", { alpha: false })!;
+                bCtx.filter = `blur(${bgBlur * SC}px)`;
+                const s = Math.max(CW / (el.naturalWidth || 1), CH / (el.naturalHeight || 1));
+                const sw = el.naturalWidth * s;
+                const sh = el.naturalHeight * s;
+                bCtx.drawImage(el, (CW - sw) / 2, (CH - sh) / 2, sw, sh);
+                bgElements.push(blurCanvas);
+            } else {
+                bgElements.push(el);
+            }
+        }
+    }
+  }
 
   // Video background setup
   let videoBG: HTMLVideoElement | null = null;
@@ -176,8 +202,8 @@ export async function exportVideo({
     });
   }
 
-  // OPTIMIZATION: Pre-blur background if needed to avoid expensive filter on every frame
-  if (bgType === "image" && bgElInput && bgBlur > 0) {
+  // OPTIMIZATION: Pre-blur fallback background if needed
+  if (bgType === "image" && bgElInput && bgBlur > 0 && bgElements.length === 0) {
     const blurCanvas = document.createElement("canvas");
     blurCanvas.width = CW;
     blurCanvas.height = CH;
@@ -198,7 +224,7 @@ export async function exportVideo({
 
   const waveRelH = [0.4, 0.7, 0.9, 0.5, 0.8, 0.6, 0.9, 0.7, 0.4, 0.8, 0.5, 0.7];
 
-  const drawFrame = (ayah: Ayah, phase: number, ayahTime: number, totalDur: number) => {
+  const drawFrame = (ayah: Ayah, phase: number, ayahTime: number, totalDur: number, totalTime: number) => {
     ctx.fillStyle = "#000";
     ctx.fillRect(0, 0, CW, CH);
 
@@ -210,11 +236,29 @@ export async function exportVideo({
       const h = videoBG.videoHeight * s;
       ctx.drawImage(videoBG, (CW - w) / 2, (CH - h) / 2, w, h);
       ctx.restore();
+    } else if (bgType === "image" && bgElements.length > 0) {
+        // Multi-image selection logic
+        const totalImgDuration = bgImages.reduce((acc, img) => acc + (img.duration || 0), 0) || 1;
+        const loopedTime = totalTime % totalImgDuration;
+        let elapsed = 0;
+        let activeEl = bgElements[0];
+        for (let i = 0; i < bgImages.length; i++) {
+            elapsed += (bgImages[i].duration || 0);
+            if (loopedTime < elapsed) {
+                activeEl = bgElements[i];
+                break;
+            }
+        }
+        
+        const s = activeEl instanceof HTMLCanvasElement ? 1 : Math.max(CW / ((activeEl as HTMLImageElement).naturalWidth || 1), CH / ((activeEl as HTMLImageElement).naturalHeight || 1));
+        const w = "naturalWidth" in activeEl ? (activeEl as HTMLImageElement).naturalWidth * s : (activeEl as HTMLCanvasElement).width * s;
+        const h = "naturalHeight" in activeEl ? (activeEl as HTMLImageElement).naturalHeight * s : (activeEl as HTMLCanvasElement).height * s;
+        ctx.drawImage(activeEl, (CW - w) / 2, (CH - h) / 2, w, h);
     } else if (bgEl) {
-      // Use the pre-blurred (or original) background without filter
+      // Fallback for single image
       const s = bgEl instanceof HTMLCanvasElement ? 1 : Math.max(CW / ((bgEl as HTMLImageElement).naturalWidth || 1), CH / ((bgEl as HTMLImageElement).naturalHeight || 1));
-      const w = "naturalWidth" in bgEl ? bgEl.naturalWidth * s : bgEl.width * s;
-      const h = "naturalHeight" in bgEl ? bgEl.naturalHeight * s : bgEl.height * s;
+      const w = "naturalWidth" in bgEl ? (bgEl as HTMLImageElement).naturalWidth * s : (bgEl as HTMLCanvasElement).width * s;
+      const h = "naturalHeight" in bgEl ? (bgEl as HTMLImageElement).naturalHeight * s : (bgEl as HTMLCanvasElement).height * s;
       ctx.drawImage(bgEl, (CW - w) / 2, (CH - h) / 2, w, h);
     }
 
@@ -594,7 +638,7 @@ export async function exportVideo({
     const ayahTime = currentTime - currentData.start;
     
     phase += frameTime * ((2 * Math.PI) / 1.6);
-    if (ayah) drawFrame(ayah, phase, ayahTime, currentData.duration);
+    if (ayah) drawFrame(ayah, phase, ayahTime, currentData.duration, currentTime);
     
     // Copy to a pool canvas and start blob conversion
     const poolIdx = f % blobPoolSize;

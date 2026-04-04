@@ -1,6 +1,6 @@
 import Image from "next/image";
 import { Play, Pause, SkipForward, SkipBack } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { EditorState, Ayah, Surah } from "@/types";
 
 export interface VideoPreviewProps {
@@ -14,6 +14,7 @@ export interface VideoPreviewProps {
   togglePlayback: () => void;
   audioRef: React.MutableRefObject<HTMLAudioElement | null>;
   handleAudioEnded: () => void;
+  ayahDurations?: number[];
 }
 
 export function VideoPreview({
@@ -27,6 +28,7 @@ export function VideoPreview({
   togglePlayback,
   audioRef,
   handleAudioEnded,
+  ayahDurations = [],
 }: VideoPreviewProps) {
   const previewRef = useRef<HTMLDivElement | null>(null);
   const [previewWidth, setPreviewWidth] = useState<number>(400);
@@ -36,6 +38,7 @@ export function VideoPreview({
   const {
     bgType,
     bgImage,
+    bgImages,
     bgVideo,
     bgVideoMuted,
     bgVideoRange,
@@ -137,6 +140,33 @@ export function VideoPreview({
     translationFontSize,
     translationColor
   } = state;
+  
+  const accumulatedTime = useMemo(() => {
+    let time = 0;
+    for (let i = 0; i < currentAyahIndex; i++) {
+        time += ayahDurations[i] || 5; 
+    }
+    return time + currentAudioTime;
+  }, [currentAyahIndex, currentAudioTime, ayahDurations]);
+
+  const currentBgImage = useMemo(() => {
+    if (bgType !== "image") return null;
+    if (!bgImages || bgImages.length === 0) return bgImage;
+    if (bgImages.length === 1) return bgImages[0].url;
+
+    const totalImgDuration = bgImages.reduce((acc, img) => acc + (img.duration || 0), 0);
+    if (totalImgDuration === 0) return bgImages[0].url;
+
+    // Use accumulatedTime across all ayahs for the slideshow
+    const loopedTime = accumulatedTime % totalImgDuration;
+    
+    let elapsed = 0;
+    for (const img of bgImages) {
+      elapsed += (img.duration || 0);
+      if (loopedTime < elapsed) return img.url;
+    }
+    return bgImages[bgImages.length - 1].url;
+  }, [bgImages, bgImage, accumulatedTime, bgType]);
 
   return (
     <div
@@ -145,17 +175,20 @@ export function VideoPreview({
       style={{ aspectRatio }}
     >
       {bgType === "image" ? (
-        <Image
-          src={bgImage}
-          alt="Quran video preview"
-          fill
-          priority
-          loading="eager"
-          className={`object-cover transition-transform duration-[10000ms] ease-linear ${
-            isPlaying ? "scale-110" : "scale-100"
-          }`}
-          style={{ filter: `blur(${bgBlur}px)` }}
-        />
+        currentBgImage && (
+          <Image
+            key={currentBgImage}
+            src={currentBgImage}
+            alt="Quran video preview"
+            fill
+            priority
+            loading="eager"
+            className={`object-cover transition-all duration-[1200ms] ${
+              isPlaying ? "scale-110" : "scale-100"
+            }`}
+            style={{ filter: `blur(${bgBlur}px)` }}
+          />
+        )
       ) : (
         bgVideo && (
           <video
@@ -308,7 +341,7 @@ export function VideoPreview({
                       >
                         {(ayah.text.split(/\s+/).filter(w => w.length > 0)).map((word, wIdx) => {
                           const words = ayah.text.split(/\s+/).filter(w => w.length > 0);
-                          const totalDuration = audioRef.current?.duration || 4;
+                          const totalDuration = ayahDurations[currentAyahIndex] || audioRef.current?.duration || 4;
                           const wordLengths = words.map(w => w.length);
                           const totalLength = wordLengths.reduce((a, b) => a + b, 0);
                           let cumulativeTime = 0;

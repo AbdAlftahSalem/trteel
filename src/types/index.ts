@@ -39,6 +39,12 @@ export type AspectRatio = {
   h: number;
 };
 
+export type BackgroundImage = {
+  id: string;
+  url: string;
+  duration: number;
+};
+
 export type EditorState = {
   selectedSurahNumber: number;
   fromAyah: number;
@@ -61,7 +67,8 @@ export type EditorState = {
   showSurahName: boolean;
   aspectRatio: string;
   bgType: "image" | "video";
-  bgImage: any;
+  bgImage: string;
+  bgImages: BackgroundImage[];
   bgVideo: string | null;
   bgVideoMuted: boolean;
   bgVideoRange: [number, number];

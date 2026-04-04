@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import Image from "next/image";
 import {
   Palette,
@@ -16,6 +16,9 @@ import {
   Sparkles,
   Volume2,
   VolumeX,
+  Trash2,
+  Plus,
+  Clock,
 } from "lucide-react";
 import { SettingAccordion } from "./SettingAccordion";
 import { EditorState } from "@/types";
@@ -29,6 +32,7 @@ export interface SettingsSidebarProps {
   isExporting: boolean;
   exportProgress: number;
   handleExport: () => void;
+  totalAudioDuration?: number;
 }
 
 export function SettingsSidebar({
@@ -38,6 +42,7 @@ export function SettingsSidebar({
   isExporting,
   exportProgress,
   handleExport,
+  totalAudioDuration = 0,
 }: SettingsSidebarProps) {
   const [activeAccordion, setActiveAccordion] = useState<string>("selection");
   const [settingsMode, setSettingsMode] = useState<"simple" | "advanced">("simple");
@@ -60,6 +65,7 @@ export function SettingsSidebar({
     toAyah,
     bgType,
     bgImage,
+    bgImages,
     bgVideo,
     bgVideoMuted,
     bgVideoRange,
@@ -456,44 +462,135 @@ export function SettingsSidebar({
             </div>
 
             {bgType === "image" ? (
-              <div className="grid grid-cols-3 gap-3">
-                {BACKGROUNDS.map((bg, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => updateState({ bgImage: bg })}
-                    className={`group relative aspect-square flex-shrink-0 cursor-pointer overflow-hidden rounded-xl border-2 transition-all duration-500 hover:scale-110 hover:shadow-[0_0_20px_rgba(22,119,255,0.4)] hover:z-10 hover:brightness-110 ${
-                      bgImage === bg
-                        ? "border-[#1677ff] shadow-[0_0_25px_rgba(22,119,255,0.5)] scale-[1.05] ring-2 ring-[#1677ff]/40"
-                        : "border-transparent"
-                    }`}
-                  >
-                    <Image
-                      src={bg}
-                      alt={`BG ${idx + 1}`}
-                      fill
-                      className="object-cover transition-transform duration-700 group-hover:scale-125"
-                    />
-                    <div className={`absolute inset-0 transition-opacity duration-300 ${bgImage === bg ? "bg-black/0" : "bg-black/30 group-hover:bg-black/0"}`} />
-                  </button>
-                ))}
-                <label className={`flex aspect-square cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed transition-all ${
-                    isDarkMode ? "border-[#2f3545] bg-[#252c3c] hover:bg-[#2c3346]" : "border-[#dce6f8] bg-white hover:bg-[#eef4ff]"
-                }`}>
-                  <ImagePlus size={14} className="text-[#1f6feb]" />
-                  <input
-                    type="file"
-                    hidden
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        const reader = new FileReader();
-                        reader.onload = (event) => updateState({ bgImage: event.target?.result as string });
-                        reader.readAsDataURL(file);
-                      }
-                    }}
-                  />
-                </label>
+              <div className="space-y-6">
+                {/* Image Selection Gallery */}
+                <div>
+                  <label className={`mb-3 block text-[11px] font-bold ${isDarkMode ? "text-[#6e7786]" : "text-[#81899a]"}`}>
+                    معرض الصور (Image Gallery)
+                  </label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {BACKGROUNDS.map((bg, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => {
+                          const newImg = { id: Math.random().toString(36).substr(2, 9), url: bg, duration: 5 };
+                          updateState({ bgImages: [...(bgImages || []), newImg] });
+                        }}
+                        className="group relative aspect-square cursor-pointer overflow-hidden rounded-lg border-2 border-transparent transition-all hover:scale-105 hover:border-[#1677ff]"
+                      >
+                        <Image src={bg} alt={`BG ${idx + 1}`} fill className="object-cover" />
+                        <div className="absolute inset-0 bg-black/20 opacity-0 transition-opacity group-hover:opacity-100 flex items-center justify-center">
+                          <Plus size={16} className="text-white" />
+                        </div>
+                      </button>
+                    ))}
+                    <label className={`flex aspect-square cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed transition-all ${
+                        isDarkMode ? "border-[#2f3545] bg-[#252c3c] hover:bg-[#2c3346]" : "border-[#dce6f8] bg-white hover:bg-[#eef4ff]"
+                    }`}>
+                      <Plus size={14} className="text-[#1f6feb]" />
+                      <input
+                        type="file"
+                        hidden
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onload = (event) => {
+                              const newImg = { id: Math.random().toString(36).substr(2, 9), url: event.target?.result as string, duration: 5 };
+                              updateState({ bgImages: [...(bgImages || []), newImg] });
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                {/* Selected Images List */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between border-b pb-2 mb-3">
+                    <div className="flex flex-col">
+                      <label className={`block text-[11px] font-bold ${isDarkMode ? "text-[#6e7786]" : "text-[#81899a]"}`}>
+                        الخلفيات المختارة (Selected Backgrounds)
+                      </label>
+                      <span className={`text-[9px] font-medium leading-tight ${isDarkMode ? "text-[#5b6373]" : "text-[#94a3b8]"}`}>
+                        إجمالي وقت التلاوة: {Math.floor(totalAudioDuration)}ث
+                      </span>
+                    </div>
+                    {bgImages && bgImages.length > 0 && (
+                      <div className="flex flex-col items-end gap-1">
+                        <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
+                          Math.abs(bgImages.reduce((acc, img) => acc + (img.duration || 0), 0) - totalAudioDuration) < 1
+                            ? "bg-[#0d8f5b]/10 text-[#0d8f5b]" 
+                            : "bg-[#1677ff]/10 text-[#1677ff]"
+                        }`}>
+                          {bgImages.reduce((acc, img) => acc + (img.duration || 0), 0)}ث إجمالي
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    {bgImages && bgImages.length > 0 ? (
+                      bgImages.map((img, index) => (
+                        <div 
+                          key={img.id} 
+                          className={`flex items-center gap-3 rounded-xl border p-2 transition-all ${
+                            isDarkMode ? "bg-[#1a2529] border-[#284249]" : "bg-[#f8fafc] border-[#e2e8f0]"
+                          }`}
+                        >
+                          <div className="relative h-12 w-12 flex-shrink-0 overflow-hidden rounded-lg border border-white/10">
+                            <Image src={img.url} alt={`Slide ${index + 1}`} fill className="object-cover" />
+                            <div className="absolute bottom-0 right-0 bg-black/60 px-1 text-[8px] font-bold text-white">
+                              {index + 1}
+                            </div>
+                          </div>
+                          
+                          <div className="flex-1 space-y-1">
+                            <div className="flex items-center justify-between">
+                              <span className={`text-[10px] font-bold ${isDarkMode ? "text-white" : "text-[#1e293b]"}`}>
+                                مدة العرض (Duration)
+                              </span>
+                              <span className="text-[10px] font-bold text-[#1677ff]">{img.duration}ث</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Clock size={10} className="text-[#8a93a5]" />
+                              <input
+                                type="range"
+                                min="1"
+                                max="120"
+                                value={img.duration}
+                                onChange={(e) => {
+                                  const newImages = [...bgImages];
+                                  newImages[index] = { ...newImages[index], duration: Number(e.target.value) };
+                                  updateState({ bgImages: newImages });
+                                }}
+                                className="h-1 flex-1 accent-[#1677ff]"
+                              />
+                            </div>
+                          </div>
+
+                          <button
+                            onClick={() => {
+                              const newImages = bgImages.filter((_, i) => i !== index);
+                              updateState({ bgImages: newImages });
+                            }}
+                            className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${
+                              isDarkMode ? "bg-red-500/10 text-red-400 hover:bg-red-500/20" : "bg-red-50 text-red-500 hover:bg-red-100"
+                            }`}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      ))
+                    ) : (
+                      <div className={`rounded-xl border border-dashed p-6 text-center ${isDarkMode ? "border-[#284249] text-[#6e7786]" : "border-[#cbd5e1] text-[#94a3b8]"}`}>
+                        <p className="text-[11px] font-medium">لم يتم اختيار صور بعد. أضف صوراً من المعرض أعلاه.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             ) : (
               <div className="space-y-4">

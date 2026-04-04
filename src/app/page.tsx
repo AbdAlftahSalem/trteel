@@ -59,6 +59,38 @@ export default function Home() {
     setExportProgress
   );
 
+  const [totalAudioDuration, setTotalAudioDuration] = useState<number>(0);
+  const [ayahDurations, setAyahDurations] = useState<number[]>([]);
+
+  useMemo(() => {
+    const fetchDurations = async () => {
+      const durations = await Promise.all(
+        selectedAyahs.map(async (ayah) => {
+          const sNum = String(state.selectedSurahNumber).padStart(3, "0");
+          const aNum = String(ayah.numberInSurah).padStart(3, "0");
+          const audioUrl = `/audio-proxy/${state.selectedReciterId}/${sNum}${aNum}.mp3`;
+          try {
+            const response = await fetch(audioUrl);
+            const blob = await response.blob();
+            return new Promise<number>((resolve) => {
+              const audio = new Audio();
+              audio.src = URL.createObjectURL(blob);
+              audio.onloadedmetadata = () => resolve(audio.duration);
+              audio.onerror = () => resolve(5); // Fallback
+            });
+          } catch {
+            return 5; // Fallback
+          }
+        })
+      );
+      setAyahDurations(durations);
+      setTotalAudioDuration(durations.reduce((a, b) => a + b, 0));
+    };
+    if (selectedAyahs.length > 0) {
+      fetchDurations();
+    }
+  }, [selectedAyahs, state.selectedReciterId, state.selectedSurahNumber]);
+
   return (
     <>
       <style jsx global>{`
@@ -121,7 +153,8 @@ export default function Home() {
                   state.isDarkMode ? "bg-white/8 text-[#c4d2d6]" : "bg-white/80 text-[#33413e]"
                 }`}
               >
-                {selectedSurah.name.ar} • {state.fromAyah}-{state.toAyah}
+                {selectedSurah.name.ar} • {state.fromAyah}-{state.toAyah} 
+                {totalAudioDuration > 0 && ` • ${Math.floor(totalAudioDuration / 60)}:${Math.floor(totalAudioDuration % 60).toString().padStart(2, '0')}`}
               </span>
             </div>
 
@@ -147,6 +180,7 @@ export default function Home() {
               togglePlayback={togglePlayback}
               audioRef={audioRef}
               handleAudioEnded={handleAudioEnded}
+              ayahDurations={ayahDurations}
             />
           </div>
 
@@ -157,6 +191,7 @@ export default function Home() {
             isExporting={isExporting}
             exportProgress={exportProgress}
             handleExport={handleExport}
+            totalAudioDuration={totalAudioDuration}
           />
         </section>
       </main>

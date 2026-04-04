@@ -26,6 +26,7 @@ export function useEditorState() {
     aspectRatio: "9/16",
     bgType: "image",
     bgImage: BACKGROUNDS[0],
+    bgImages: [{ id: "1", url: BACKGROUNDS[0], duration: 10 }],
     bgVideo: null,
     bgVideoMuted: true,
     bgVideoRange: [0, 10], // Default 10s range
