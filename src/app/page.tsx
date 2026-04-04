@@ -136,18 +136,20 @@ export default function Home() {
               }`}
             />
 
-            <VideoPreview
-              state={state}
-              selectedAyahs={selectedAyahs}
-              selectedSurah={selectedSurah}
-              maxAyah={selectedSurah.verses_count}
-              currentAyahIndex={currentAyahIndex}
-              setCurrentAyahIndex={setCurrentAyahIndex}
-              isPlaying={isPlaying}
-              togglePlayback={togglePlayback}
-              audioRef={audioRef}
-              handleAudioEnded={handleAudioEnded}
-            />
+            <div className="absolute inset-4 md:inset-10 flex items-center justify-center z-10" style={{ containerType: 'size' }}>
+              <VideoPreview
+                state={state}
+                selectedAyahs={selectedAyahs}
+                selectedSurah={selectedSurah}
+                maxAyah={selectedSurah.verses_count}
+                currentAyahIndex={currentAyahIndex}
+                setCurrentAyahIndex={setCurrentAyahIndex}
+                isPlaying={isPlaying}
+                togglePlayback={togglePlayback}
+                audioRef={audioRef}
+                handleAudioEnded={handleAudioEnded}
+              />
+            </div>
           </div>
 
           <SettingsSidebar

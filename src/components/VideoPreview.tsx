@@ -138,11 +138,18 @@ export function VideoPreview({
     translationColor
   } = state;
 
+  const ratioMath = aspectRatio.includes(":") ? aspectRatio.replace(":", "/") : aspectRatio;
+
   return (
     <div
       ref={previewRef}
-      className="relative flex-none w-full max-h-full max-w-full overflow-hidden rounded-[20px] md:h-full md:w-auto md:rounded-[36px] border-[3px] md:border-[6px] border-[#1e3630] shadow-[0_34px_90px_rgba(4,22,18,0.4)] transition-all duration-500 ease-in-out"
-      style={{ aspectRatio }}
+      className="relative flex-none overflow-hidden rounded-[20px] md:rounded-[36px] border-[3px] md:border-[6px] border-[#1e3630] shadow-[0_34px_90px_rgba(4,22,18,0.4)] transition-all duration-500 ease-in-out"
+      style={{ 
+        aspectRatio: ratioMath,
+        width: `min(100cqw, calc(100cqh * (${ratioMath})))`,
+        maxHeight: '100%',
+        maxWidth: '100%'
+      }}
     >
       {bgType === "image" ? (
         <Image
