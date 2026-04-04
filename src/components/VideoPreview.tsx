@@ -141,7 +141,7 @@ export function VideoPreview({
   return (
     <div
       ref={previewRef}
-      className="relative h-full max-h-[min(85vh,720px)] w-auto max-w-full overflow-hidden rounded-[36px] border-[6px] border-[#1e3630] shadow-[0_34px_90px_rgba(4,22,18,0.4)] transition-all duration-500 ease-in-out"
+      className="relative flex-none w-full max-h-full max-w-full overflow-hidden rounded-[20px] md:h-full md:w-auto md:rounded-[36px] border-[3px] md:border-[6px] border-[#1e3630] shadow-[0_34px_90px_rgba(4,22,18,0.4)] transition-all duration-500 ease-in-out"
       style={{ aspectRatio }}
     >
       {bgType === "image" ? (
