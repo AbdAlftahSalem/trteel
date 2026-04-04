@@ -78,8 +78,8 @@ export async function POST(req: NextRequest) {
 
     // FFmpeg command with requested settings - Added -preset superfast for speed
     const ffmpegCmd = `"${ffmpegPath}" -y ${inputCmd} ` +
-      `-c:v libx264 -preset superfast -profile:v high -level 4.1 -pix_fmt yuv420p -r ${fps} -b:v ${bitrate} ` +
-      `-c:a aac -b:a 128k -ar 44100 -movflags +faststart -shortest "${outputPath}"`;
+      `-c:v libx264 -preset superfast -profile:v baseline -level 3.0 -pix_fmt yuv420p -r ${fps} -b:v ${bitrate} ` +
+      `-c:a aac -b:a 128k -ar 44100 -ac 2 -movflags +faststart -shortest "${outputPath}"`;
 
     console.log("Running FFmpeg:", ffmpegCmd);
     await execAsync(ffmpegCmd);

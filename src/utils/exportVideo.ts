@@ -713,26 +713,36 @@ export async function exportVideo({
       }
     });
 
+    // avc1.PPCCLL — PP=profile, CC=constraint flags, LL=level
+    // Baseline (0x42) with constraint_set0+1+2 flags (0xE0), Level 4.1 (0x29) — most Instagram-compatible
+    // Main    (0x4d) no extra constraints (0x00), Level 4.1 (0x29)
+    // High    (0x64) no extra constraints           (0x00), Level 4.1 (0x29)
+    // VP8/VP9 are NOT supported by Instagram — never use as fallback
     let videoConfig: VideoEncoderConfig = {
-      codec: 'avc1.4d002a', // Main Profile, Level 4.2 (Highly compatible with Instagram)
+      codec: 'avc1.42E029', // H.264 Baseline Profile, Level 4.1 — max Instagram compatibility
       width: CW,
       height: CH,
-      bitrate: parseInt(qualityData.bitrate || "6000") * 1000, 
+      bitrate: parseInt(qualityData.bitrate) * 1000,
       framerate: FPS,
       avc: { format: 'avc' }
     };
-    
+
     let isSupported = await VideoEncoder.isConfigSupported(videoConfig);
     if (!isSupported.supported) {
-        videoConfig.codec = 'avc1.42002a'; // Fallback to baseline
+      videoConfig.codec = 'avc1.4d0029'; // Main Profile, Level 4.1
+      isSupported = await VideoEncoder.isConfigSupported(videoConfig);
+      if (!isSupported.supported) {
+        videoConfig.codec = 'avc1.640029'; // High Profile, Level 4.1
         isSupported = await VideoEncoder.isConfigSupported(videoConfig);
         if (!isSupported.supported) {
-             videoConfig.codec = 'avc1.64002a'; // Fallback to High
-             isSupported = await VideoEncoder.isConfigSupported(videoConfig);
-             if (!isSupported.supported) {
-                 videoConfig.codec = 'vp8'; // Universal Fallback!
-             }
+          // Last resort: Baseline Level 3.0 — supported on every modern browser
+          videoConfig.codec = 'avc1.42E01e';
+          isSupported = await VideoEncoder.isConfigSupported(videoConfig);
+          if (!isSupported.supported) {
+            throw new Error('H.264 video encoding is not supported in this browser.');
+          }
         }
+      }
     }
     
     videoEncoder.configure(videoConfig);
@@ -804,9 +814,39 @@ export async function exportVideo({
     onProgress(99);
 
     const bufTarget = muxer.target as { buffer: ArrayBuffer };
-    const finalBlob = new Blob([bufTarget.buffer], { type: 'video/mp4' });
+    let finalBlob = new Blob([bufTarget.buffer], { type: 'video/mp4' });
 
-    const downloadName = `trteel-${selectedSurah.name.en.replace(/\\s+/g, "-")}-${new Date().getTime()}.mp4`;
+    const surahSlug = selectedSurah.name.en.replace(/\s+/g, "-");
+    const timestamp = new Date().getTime();
+    const downloadName = `trteel-${surahSlug}-${timestamp}.mp4`;
+
+    // Instagram / TikTok / WhatsApp presets: run the video through the server-side
+    // FFmpeg pipeline to guarantee H.264 Baseline + faststart + yuv420p output,
+    // which is the format Instagram's uploader requires to publish successfully.
+    const instagramPresets = ["story", "post", "tiktok", "whatsapp"];
+    if (instagramPresets.includes(exportPreset)) {
+      try {
+        onProgress(99);
+        const form = new FormData();
+        form.append("video", finalBlob, downloadName);
+        form.append("filename", downloadName);
+
+        const response = await fetch("/api/instagram-fix", {
+          method: "POST",
+          body: form,
+        });
+
+        if (response.ok) {
+          finalBlob = await response.blob();
+        } else {
+          console.warn("Instagram fix API failed, using client-side encoded video:", await response.text());
+        }
+      } catch (fetchErr) {
+        console.warn("Instagram fix API unreachable, using client-side encoded video:", fetchErr);
+      }
+    }
+
+    onProgress(100);
     const url = URL.createObjectURL(finalBlob);
     const a = document.createElement("a");
     a.href = url;
@@ -814,9 +854,9 @@ export async function exportVideo({
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    onProgress(100);
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
   } catch (error: any) {
-    alert("Export failed locally: " + (error.message || error));
+    alert("Export failed: " + (error.message || error));
   }
 
   audioCtx.close();
