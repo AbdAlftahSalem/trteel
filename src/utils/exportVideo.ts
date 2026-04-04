@@ -1,5 +1,6 @@
 import { EditorState, Ayah, Surah } from "@/types";
 import { EXPORT_QUALITIES } from "@/constants";
+import * as Mp4Muxer from 'mp4-muxer';
 
 export interface ExportConfig {
   state: EditorState;
@@ -685,25 +686,126 @@ export async function exportVideo({
 
   onProgress(90);
 
-  // POST TO SERVER
+  // CLIENT-SIDE EXPORT USING WebCodecs & mp4-muxer (Extremely Fast, No File Limits)
   const qualityData = EXPORT_QUALITIES.find(q => q.id === exportQuality) || EXPORT_QUALITIES[1];
-  const formData = new FormData();
-  formData.append("audio", audioBlob);
-  frameBlobs.forEach((blob, idx) => {
-    formData.append("frames", blob, `frame_${String(idx).padStart(6, '0')}.jpg`);
-  });
-  formData.append("settings", JSON.stringify({
-    bitrate: qualityData.bitrate,
-    fps: FPS,
-    preset: exportPreset
-  }));
-
+  
   try {
-    const response = await fetch("/api/export", { method: "POST", body: formData });
-    if (!response.ok) throw new Error(await response.text());
+    let muxer = new Mp4Muxer.Muxer({
+      target: new Mp4Muxer.ArrayBufferTarget(),
+      video: {
+        codec: 'avc',
+        width: CW,
+        height: CH
+      },
+      audio: {
+        codec: 'aac',
+        sampleRate: 44100,
+        numberOfChannels: mixedAudioBuffer.numberOfChannels
+      },
+      fastStart: 'in-memory'
+    });
 
-    const finalBlob = await response.blob();
-    const downloadName = `trteel-${selectedSurah.name.en.replace(/\s+/g, "-")}-${new Date().getTime()}.mp4`;
+    let videoEncoder = new VideoEncoder({
+      output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
+      error: e => {
+        console.error("VideoEncoder error: ", e);
+        alert(`Video encoding error: ${e.message}`);
+      }
+    });
+
+    let videoConfig: VideoEncoderConfig = {
+      codec: 'avc1.4d0032', // Main Profile, Level 5.0 (good for 1080p+)
+      width: CW,
+      height: CH,
+      bitrate: parseInt(qualityData.bitrate || "6000") * 1000, 
+      framerate: FPS
+    };
+    
+    let isSupported = await VideoEncoder.isConfigSupported(videoConfig);
+    if (!isSupported.supported) {
+        videoConfig.codec = 'avc1.420032'; // Fallback to baseline
+        isSupported = await VideoEncoder.isConfigSupported(videoConfig);
+        if (!isSupported.supported) {
+             videoConfig.codec = 'avc1.640032'; // Fallback to High
+             isSupported = await VideoEncoder.isConfigSupported(videoConfig);
+             if (!isSupported.supported) {
+                 videoConfig.codec = 'vp8'; // Universal Fallback!
+             }
+        }
+    }
+    
+    videoEncoder.configure(videoConfig);
+
+    let audioEncoder = new AudioEncoder({
+      output: (chunk, meta) => muxer.addAudioChunk(chunk, meta),
+      error: e => {
+        console.error("AudioEncoder error: ", e);
+        alert(`Audio encoding error: ${e.message}`);
+      }
+    });
+    
+    audioEncoder.configure({
+      codec: 'mp4a.40.2',
+      sampleRate: 44100,
+      numberOfChannels: mixedAudioBuffer.numberOfChannels,
+      bitrate: 128000
+    });
+
+    onProgress(92);
+    
+    // Feed images to VideoEncoder
+    for (let f = 0; f < frameBlobs.length; f++) {
+      const bmp = await createImageBitmap(frameBlobs[f]);
+      const frame = new VideoFrame(bmp, { timestamp: (f / FPS) * 1e6 });
+      videoEncoder.encode(frame);
+      frame.close();
+      
+      if (f % 30 === 0) await new Promise(r => setTimeout(r, 0));
+      onProgress(92 + ((f / frameBlobs.length) * 4)); 
+    }
+    await videoEncoder.flush();
+    onProgress(96);
+
+    // Feed audio to AudioEncoder
+    const acA = new OfflineAudioContext(mixedAudioBuffer.numberOfChannels, mixedAudioBuffer.length, 44100);
+    // Resample if needed
+    if (mixedAudioBuffer.sampleRate !== 44100) {
+      const src = acA.createBufferSource();
+      src.buffer = mixedAudioBuffer;
+      src.connect(acA.destination);
+      src.start();
+      const resampledBuffer = await acA.startRendering();
+      // we encode this buffer
+      encodeAudio(resampledBuffer, audioEncoder);
+    } else {
+      encodeAudio(mixedAudioBuffer, audioEncoder);
+    }
+
+    function encodeAudio(buf: AudioBuffer, enc: AudioEncoder) {
+      const planarData = new Float32Array(buf.length * buf.numberOfChannels);
+      for (let c = 0; c < buf.numberOfChannels; c++) {
+        planarData.set(buf.getChannelData(c), c * buf.length);
+      }
+      const audioData = new AudioData({
+        format: 'f32-planar',
+        sampleRate: 44100,
+        numberOfFrames: buf.length,
+        numberOfChannels: buf.numberOfChannels,
+        timestamp: 0,
+        data: planarData
+      });
+      enc.encode(audioData);
+      audioData.close();
+    }
+
+    await audioEncoder.flush();
+    muxer.finalize();
+    onProgress(99);
+
+    const bufTarget = muxer.target as { buffer: ArrayBuffer };
+    const finalBlob = new Blob([bufTarget.buffer], { type: 'video/mp4' });
+
+    const downloadName = `trteel-${selectedSurah.name.en.replace(/\\s+/g, "-")}-${new Date().getTime()}.mp4`;
     const url = URL.createObjectURL(finalBlob);
     const a = document.createElement("a");
     a.href = url;
@@ -713,7 +815,7 @@ export async function exportVideo({
     document.body.removeChild(a);
     onProgress(100);
   } catch (error: any) {
-    alert("Export failed: " + error.message);
+    alert("Export failed locally: " + (error.message || error));
   }
 
   audioCtx.close();
