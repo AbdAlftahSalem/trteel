@@ -714,19 +714,20 @@ export async function exportVideo({
     });
 
     let videoConfig: VideoEncoderConfig = {
-      codec: 'avc1.4d0032', // Main Profile, Level 5.0 (good for 1080p+)
+      codec: 'avc1.4d002a', // Main Profile, Level 4.2 (Highly compatible with Instagram)
       width: CW,
       height: CH,
       bitrate: parseInt(qualityData.bitrate || "6000") * 1000, 
-      framerate: FPS
+      framerate: FPS,
+      avc: { format: 'avc' }
     };
     
     let isSupported = await VideoEncoder.isConfigSupported(videoConfig);
     if (!isSupported.supported) {
-        videoConfig.codec = 'avc1.420032'; // Fallback to baseline
+        videoConfig.codec = 'avc1.42002a'; // Fallback to baseline
         isSupported = await VideoEncoder.isConfigSupported(videoConfig);
         if (!isSupported.supported) {
-             videoConfig.codec = 'avc1.640032'; // Fallback to High
+             videoConfig.codec = 'avc1.64002a'; // Fallback to High
              isSupported = await VideoEncoder.isConfigSupported(videoConfig);
              if (!isSupported.supported) {
                  videoConfig.codec = 'vp8'; // Universal Fallback!
