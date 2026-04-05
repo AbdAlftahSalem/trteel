@@ -9,6 +9,22 @@ export interface ExportConfig {
   onProgress: (progress: number) => void;
 }
 
+interface AyahLayout {
+  lines: string[];
+  transLines: string[];
+  lh: number;
+  tlh: number;
+  totalTextH: number;
+  wordData: Array<{
+    words: string[];
+    lineWidth: number;
+    wordWidths: number[];
+    spaceWidth: number;
+    /** pre-computed wLen/totalCharLength for each word (multiply by totalDur to get wDur) */
+    charFractions: number[];
+  }>;
+}
+
 // Simple WAV encoder for AudioBuffer
 function audioBufferToWav(buffer: AudioBuffer): Blob {
   const numOfChan = buffer.numberOfChannels;
@@ -199,7 +215,76 @@ export async function exportVideo({
 
   const waveRelH = [0.4, 0.7, 0.9, 0.5, 0.8, 0.6, 0.9, 0.7, 0.4, 0.8, 0.5, 0.7];
 
-  const drawFrame = (ayah: Ayah, phase: number, ayahTime: number, totalDur: number) => {
+  // Pre-compute text layout for a single ayah so drawFrame never calls measureText in a loop.
+  const computeLayout = (ayah: Ayah): AyahLayout => {
+    const fs = ayahFontSize * SC;
+    const tfs = translationFontSize * SC;
+    const maxW = CW * 0.85;
+
+    ctx.save();
+    ctx.font = `500 ${fs}px Tajawal, sans-serif`;
+    ctx.direction = "rtl";
+
+    // Arabic line wrapping
+    const words = ayah.text.split(" ");
+    const lines: string[] = [];
+    let cur = "";
+    for (const w of words) {
+      const t = cur ? `${cur} ${w}` : w;
+      if (ctx.measureText(t).width > maxW && cur) {
+        lines.push(cur);
+        cur = w;
+      } else {
+        cur = t;
+      }
+    }
+    if (cur) lines.push(cur);
+
+    const lh = fs * 1.6;
+
+    // Word-sync data: measure once, reuse every frame
+    const allLineWords = lines.flatMap(ln => ln.split(/\s+/).filter(Boolean));
+    const totalCharLength = allLineWords.reduce((sum, w) => sum + w.length, 0) || 1;
+    const wordData = lines.map(ln => {
+      const lineWords = ln.split(/\s+/).filter(Boolean);
+      const lineWidth = ctx.measureText(ln).width;
+      const wordWidths = lineWords.map(w => ctx.measureText(w).width);
+      const spaceWidth = ctx.measureText(" ").width;
+      const charFractions = lineWords.map(w => w.length / totalCharLength);
+      return { words: lineWords, lineWidth, wordWidths, spaceWidth, charFractions };
+    });
+
+    // Translation line wrapping
+    const transLines: string[] = [];
+    let transBlockH = 0;
+    const tlh = tfs * 1.4;
+
+    if (showTranslation && ayah.translation) {
+      ctx.font = `${tfs}px Tajawal, sans-serif`;
+      ctx.direction = "ltr";
+      const tWords = ayah.translation.split(" ");
+      let tCur = "";
+      for (const w of tWords) {
+        const t = tCur ? `${tCur} ${w}` : w;
+        if (ctx.measureText(t).width > maxW && tCur) {
+          transLines.push(tCur);
+          tCur = w;
+        } else {
+          tCur = t;
+        }
+      }
+      if (tCur) transLines.push(tCur);
+      transBlockH = transLines.length * tlh;
+    }
+
+    ctx.restore();
+
+    const gap = 16 * SC;
+    const totalTextH = lines.length * lh + (showTranslation && transLines.length ? gap + transBlockH : 0);
+    return { lines, transLines, lh, tlh, totalTextH, wordData };
+  };
+
+  const drawFrame = (ayah: Ayah, phase: number, ayahTime: number, totalDur: number, layout: AyahLayout) => {
     ctx.fillStyle = "#000";
     ctx.fillRect(0, 0, CW, CH);
 
@@ -229,6 +314,7 @@ export async function exportVideo({
     ctx.fillRect(0, 0, CW, CH);
 
     const fs = ayahFontSize * SC;
+    const tfs = translationFontSize * SC;
     ctx.save();
     ctx.font = `500 ${fs}px Tajawal, sans-serif`;
     ctx.fillStyle = ayahColor;
@@ -239,52 +325,14 @@ export async function exportVideo({
 
     const tx = (xPosition / 100) * CW;
     const textBlockBottom = CH - (yPosition / 100) * CH;
-    const words = ayah.text.split(" ");
-    const lines: string[] = [];
-    let cur = "";
-    const maxW = CW * 0.85;
-    for (const w of words) {
-      const t = cur ? `${cur} ${w}` : w;
-      if (ctx.measureText(t).width > maxW && cur) {
-        lines.push(cur);
-        cur = w;
-      } else {
-        cur = t;
-      }
-    }
-    if (cur) lines.push(cur);
 
-    const lh = fs * 1.6;
+    // Use pre-computed layout — no measureText calls per frame
+    const { lines, transLines, lh, tlh, totalTextH, wordData: layoutWordData } = layout;
     const arabicTextH = lines.length * lh;
-
-    // Translation lines
-    const transLines: string[] = [];
-    let transBlockH = 0;
-    const tfs = translationFontSize * SC;
-    const tlh = tfs * 1.4;
-    
-    if (showTranslation && ayah.translation) {
-      ctx.save();
-      ctx.font = `${tfs}px Tajawal, sans-serif`;
-      ctx.direction = "ltr";
-      const tWords = ayah.translation.split(" ");
-      let tCur = "";
-      for (const w of tWords) {
-        const t = tCur ? `${tCur} ${w}` : w;
-        if (ctx.measureText(t).width > maxW && tCur) {
-          transLines.push(tCur);
-          tCur = w;
-        } else {
-          tCur = t;
-        }
-      }
-      if (tCur) transLines.push(tCur);
-      transBlockH = transLines.length * tlh;
-      ctx.restore();
-    }
+    const transBlockH = transLines.length * tlh;
 
     const gap = 16 * SC;
-    const totalTextH = arabicTextH + (showTranslation && transLines.length ? (gap + transBlockH) : 0);
+    const maxW = CW * 0.85;
     
     // Glass Effect Calculations
     const pad = ayahGlassPadding * SC;
@@ -355,19 +403,14 @@ export async function exportVideo({
         sy += lh;
       });
     } else {
-      const allWords = ayah.text.split(/\s+/).filter(w => w.length > 0);
-      const wordLengths = allWords.map(w => w.length);
-      const totalCharLength = wordLengths.reduce((a, b) => a + b, 0);
       let cumulativeTime = 0;
 
-      lines.forEach((ln) => {
-        const lineWordsArr = ln.split(/\s+/).filter(w => w.length > 0);
-        const lineW = ctx.measureText(ln).width;
-        let curX = tx + (lineW / 2); 
+      lines.forEach((ln, lineIdx) => {
+        const { words: lineWordsArr, lineWidth, wordWidths, spaceWidth, charFractions } = layoutWordData[lineIdx];
+        let curX = tx + (lineWidth / 2);
 
-        lineWordsArr.forEach((word) => {
-          const wLen = word.length;
-          const wDur = (wLen / totalCharLength) * totalDur;
+        lineWordsArr.forEach((word, wordIdx) => {
+          const wDur = charFractions[wordIdx] * totalDur;
           const startTime = cumulativeTime;
           const endTime = cumulativeTime + wDur;
           cumulativeTime = endTime;
@@ -377,8 +420,8 @@ export async function exportVideo({
           const isPast = ayahTime >= endTime;
 
           ctx.save();
-          const wordW = ctx.measureText(word).width;
-          const spaceW = ctx.measureText(" ").width;
+          const wordW = wordWidths[wordIdx];
+          const spaceW = spaceWidth;
 
           if (wordSyncStyle === "karaoke") {
             if (isActive) {
@@ -558,154 +601,27 @@ export async function exportVideo({
   }
   onProgress(20);
 
-  // RENDER FRAMES Deterministically
-  const totalFrames = Math.ceil(totalDuration * FPS);
-  const frameBlobs: Blob[] = new Array(totalFrames);
-  
-  // Use a pool of offscreen canvases for blob conversion to avoid blocking the main drawing
-  const blobPoolSize = 6;
-  const blobPool = Array.from({ length: blobPoolSize }, () => {
-    const c = document.createElement("canvas");
-    c.width = CW;
-    c.height = CH;
-    const cx = c.getContext("2d", { alpha: false })!;
-    return { canvas: c, ctx: cx };
-  });
-
-  const blobPromises: Promise<void>[] = [];
-  const CONCURRENCY = 12;
-
-  for (let f = 0; f < totalFrames; f++) {
-    const currentTime = f * frameTime;
-
-    if (bgType === "video" && videoBG) {
-      const vStart = bgVideoRange[0];
-      const vDur = bgVideoRange[1] - vStart;
-      const seekTime = vStart + (currentTime % vDur);
-      
-      await new Promise(res => {
-        if (!videoBG) return res(null);
-        videoBG.onseeked = () => res(null);
-        videoBG.currentTime = seekTime;
-      });
-    }
-
-    const currentData = audioData.find(d => currentTime >= d.start && currentTime < d.start + d.duration) || audioData[audioData.length - 1];
-    const ayah = selectedAyahs[currentData.ayahIdx];
-    const ayahTime = currentTime - currentData.start;
-    
-    phase += frameTime * ((2 * Math.PI) / 1.6);
-    if (ayah) drawFrame(ayah, phase, ayahTime, currentData.duration);
-    
-    // Copy to a pool canvas and start blob conversion
-    const poolIdx = f % blobPoolSize;
-    const poolEl = blobPool[poolIdx];
-    poolEl.ctx.drawImage(canvas, 0, 0);
-    
-    const blobPromise = new Promise<void>(res => {
-      poolEl.canvas.toBlob((b) => {
-        if (b) frameBlobs[f] = b;
-        res();
-      }, "image/jpeg", 0.70);
-    });
-    
-    blobPromises.push(blobPromise);
-    
-    // Throttle promises to avoid memory exhaustion
-    if (blobPromises.length >= CONCURRENCY) {
-      await Promise.all(blobPromises);
-      blobPromises.length = 0;
-    }
-    
-    if (f % 60 === 0) {
-      onProgress(20 + (f / totalFrames) * 60);
-      await new Promise(r => setTimeout(r, 0));
+  // Pre-compute text layouts for all unique ayahs (avoids measureText per frame)
+  const ayahLayouts = new Map<number, AyahLayout>();
+  for (const ayah of selectedAyahs) {
+    if (!ayahLayouts.has(ayah.numberInSurah)) {
+      ayahLayouts.set(ayah.numberInSurah, computeLayout(ayah));
     }
   }
-  await Promise.all(blobPromises); // Wait for remaining blobs
 
-  onProgress(85);
-
-  // MIX AUDIO
-  const sampleRate = audioCtx.sampleRate;
-  const offlineCtx = new OfflineAudioContext(2, Math.max(1, Math.ceil(totalDuration * sampleRate)), sampleRate);
-  
-  // Audio Effect Nodes for Offline Context
-  let effectNode: AudioNode | null = null;
-  const dryGain = offlineCtx.createGain();
-  const wetGain = offlineCtx.createGain();
-
-  if (audioEffect === "studio") {
-    const reverb = offlineCtx.createConvolver();
-    const length = sampleRate * 1.5;
-    const impulse = offlineCtx.createBuffer(2, length, sampleRate);
-    for (let i = 0; i < 2; i++) {
-      const chan = impulse.getChannelData(i);
-      for (let j = 0; j < length; j++) {
-        chan[j] = (Math.random() * 2 - 1) * Math.pow(1 - j / length, 4);
-      }
-    }
-    reverb.buffer = impulse;
-    dryGain.gain.value = 0.8;
-    wetGain.gain.value = 0.4;
-    reverb.connect(wetGain);
-    effectNode = reverb;
-  } else if (audioEffect === "mosque") {
-    const delay = offlineCtx.createDelay();
-    const feedback = offlineCtx.createGain();
-    delay.delayTime.value = 0.45;
-    feedback.gain.value = 0.6;
-    dryGain.gain.value = 1.0;
-    wetGain.gain.value = 0.35;
-    delay.connect(feedback);
-    feedback.connect(delay);
-    delay.connect(wetGain);
-    effectNode = delay;
-  } else {
-    dryGain.gain.value = 1.0;
-  }
-
-  dryGain.connect(offlineCtx.destination);
-  wetGain.connect(offlineCtx.destination);
-
-  for (const data of audioData) {
-    if (data.buffer) {
-      const source = offlineCtx.createBufferSource();
-      source.buffer = data.buffer;
-      
-      source.connect(dryGain);
-      if (effectNode) {
-        source.connect(effectNode);
-      }
-      
-      source.start(data.start);
-    }
-  }
-  const mixedAudioBuffer = await offlineCtx.startRendering();
-  const audioBlob = audioBufferToWav(mixedAudioBuffer);
-
-  onProgress(90);
-
-  // CLIENT-SIDE EXPORT USING WebCodecs & mp4-muxer (Extremely Fast, No File Limits)
+  // CLIENT-SIDE EXPORT: single-pass render → VideoFrame → encode (no JPEG round-trip)
   const qualityData = EXPORT_QUALITIES.find(q => q.id === exportQuality) || EXPORT_QUALITIES[1];
-  
+
   try {
-    let muxer = new Mp4Muxer.Muxer({
+    const muxer = new Mp4Muxer.Muxer({
       target: new Mp4Muxer.ArrayBufferTarget(),
-      video: {
-        codec: 'avc',
-        width: CW,
-        height: CH
-      },
-      audio: {
-        codec: 'aac',
-        sampleRate: 44100,
-        numberOfChannels: mixedAudioBuffer.numberOfChannels
-      },
+      video: { codec: 'avc', width: CW, height: CH },
+      // Audio always encoded as stereo (2 channels) to match the OfflineAudioContext constructor below
+      audio: { codec: 'aac', sampleRate: 44100, numberOfChannels: 2 },
       fastStart: 'in-memory'
     });
 
-    let videoEncoder = new VideoEncoder({
+    const videoEncoder = new VideoEncoder({
       output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
       error: e => {
         console.error("VideoEncoder error: ", e);
@@ -744,38 +660,126 @@ export async function exportVideo({
         }
       }
     }
-    
+
     videoEncoder.configure(videoConfig);
 
-    let audioEncoder = new AudioEncoder({
+    const audioEncoder = new AudioEncoder({
       output: (chunk, meta) => muxer.addAudioChunk(chunk, meta),
       error: e => {
         console.error("AudioEncoder error: ", e);
         alert(`Audio encoding error: ${e.message}`);
       }
     });
-    
+
     audioEncoder.configure({
       codec: 'mp4a.40.2',
       sampleRate: 44100,
-      numberOfChannels: mixedAudioBuffer.numberOfChannels,
+      numberOfChannels: 2,
       bitrate: 128000
     });
 
-    onProgress(92);
-    
-    // Feed images to VideoEncoder
-    for (let f = 0; f < frameBlobs.length; f++) {
-      const bmp = await createImageBitmap(frameBlobs[f]);
-      const frame = new VideoFrame(bmp, { timestamp: (f / FPS) * 1e6 });
-      videoEncoder.encode(frame);
-      frame.close();
-      
-      if (f % 30 === 0) await new Promise(r => setTimeout(r, 0));
-      onProgress(92 + ((f / frameBlobs.length) * 4)); 
+    // RENDER + ENCODE in a single pass — no JPEG round-trip
+    const totalFrames = Math.ceil(totalDuration * FPS);
+    for (let f = 0; f < totalFrames; f++) {
+      const currentTime = f * frameTime;
+
+      if (bgType === "video" && videoBG) {
+        const vStart = bgVideoRange[0];
+        const vDur = bgVideoRange[1] - vStart;
+        const seekTime = vStart + (currentTime % vDur);
+        await new Promise(res => {
+          if (!videoBG) return res(null);
+          videoBG.onseeked = () => res(null);
+          videoBG.currentTime = seekTime;
+        });
+      }
+
+      const currentData = audioData.find(d => currentTime >= d.start && currentTime < d.start + d.duration) || audioData[audioData.length - 1];
+      const ayah = selectedAyahs[currentData.ayahIdx];
+      const ayahTime = currentTime - currentData.start;
+
+      phase += frameTime * ((2 * Math.PI) / 1.6);
+      if (ayah) {
+        const layout = ayahLayouts.get(ayah.numberInSurah) ?? computeLayout(ayah);
+        drawFrame(ayah, phase, ayahTime, currentData.duration, layout);
+      }
+
+      // Encode directly from canvas — VideoFrame copies the current pixels immediately
+      const videoFrame = new VideoFrame(canvas, {
+        timestamp: Math.round((f / FPS) * 1e6),
+        duration: Math.round((1 / FPS) * 1e6),
+      });
+      videoEncoder.encode(videoFrame, { keyFrame: f % (FPS * 2) === 0 });
+      videoFrame.close();
+
+      // Yield periodically to let the encoder drain and keep the UI responsive
+      if (f % 30 === 0) {
+        onProgress(20 + (f / totalFrames) * 65);
+        await new Promise(r => setTimeout(r, 0));
+      }
     }
+
     await videoEncoder.flush();
-    onProgress(96);
+    onProgress(85);
+
+    // MIX AUDIO
+    const sampleRate = audioCtx.sampleRate;
+    const offlineCtx = new OfflineAudioContext(2, Math.max(1, Math.ceil(totalDuration * sampleRate)), sampleRate);
+
+    // Audio Effect Nodes for Offline Context
+    let effectNode: AudioNode | null = null;
+    const dryGain = offlineCtx.createGain();
+    const wetGain = offlineCtx.createGain();
+
+    if (audioEffect === "studio") {
+      const reverb = offlineCtx.createConvolver();
+      const length = sampleRate * 1.5;
+      const impulse = offlineCtx.createBuffer(2, length, sampleRate);
+      for (let i = 0; i < 2; i++) {
+        const chan = impulse.getChannelData(i);
+        for (let j = 0; j < length; j++) {
+          chan[j] = (Math.random() * 2 - 1) * Math.pow(1 - j / length, 4);
+        }
+      }
+      reverb.buffer = impulse;
+      dryGain.gain.value = 0.8;
+      wetGain.gain.value = 0.4;
+      reverb.connect(wetGain);
+      effectNode = reverb;
+    } else if (audioEffect === "mosque") {
+      const delay = offlineCtx.createDelay();
+      const feedback = offlineCtx.createGain();
+      delay.delayTime.value = 0.45;
+      feedback.gain.value = 0.6;
+      dryGain.gain.value = 1.0;
+      wetGain.gain.value = 0.35;
+      delay.connect(feedback);
+      feedback.connect(delay);
+      delay.connect(wetGain);
+      effectNode = delay;
+    } else {
+      dryGain.gain.value = 1.0;
+    }
+
+    dryGain.connect(offlineCtx.destination);
+    wetGain.connect(offlineCtx.destination);
+
+    for (const data of audioData) {
+      if (data.buffer) {
+        const source = offlineCtx.createBufferSource();
+        source.buffer = data.buffer;
+
+        source.connect(dryGain);
+        if (effectNode) {
+          source.connect(effectNode);
+        }
+
+        source.start(data.start);
+      }
+    }
+    const mixedAudioBuffer = await offlineCtx.startRendering();
+
+    onProgress(90);
 
     // Feed audio to AudioEncoder
     const acA = new OfflineAudioContext(mixedAudioBuffer.numberOfChannels, mixedAudioBuffer.length, 44100);
