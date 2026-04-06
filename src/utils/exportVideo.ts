@@ -835,18 +835,36 @@ export async function exportVideo({
         form.append("video", finalBlob, downloadName);
         form.append("filename", downloadName);
 
-        const response = await fetch("/api/instagram-fix", {
-          method: "POST",
-          body: form,
-        });
+        // 4-minute timeout — gives FFmpeg time to re-encode even long videos.
+        // Without a timeout, a server crash or Vercel cold-start would leave the
+        // browser hanging forever with the loading spinner stuck.
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 4 * 60 * 1000);
 
-        if (response.ok) {
-          finalBlob = await response.blob();
-        } else {
-          console.warn("Instagram fix API failed, using client-side encoded video:", await response.text());
+        try {
+          const response = await fetch("/api/instagram-fix", {
+            method: "POST",
+            body: form,
+            signal: controller.signal,
+          });
+          clearTimeout(timeoutId);
+
+          if (response.ok) {
+            finalBlob = await response.blob();
+          } else {
+            const errText = await response.text();
+            console.warn("Instagram fix API failed, using client-side encoded video:", errText);
+          }
+        } catch (fetchErr: any) {
+          clearTimeout(timeoutId);
+          if (fetchErr?.name === "AbortError") {
+            console.warn("Instagram fix API timed out (4 min), using client-side encoded video.");
+          } else {
+            console.warn("Instagram fix API unreachable, using client-side encoded video:", fetchErr);
+          }
         }
-      } catch (fetchErr) {
-        console.warn("Instagram fix API unreachable, using client-side encoded video:", fetchErr);
+      } catch (setupErr) {
+        console.warn("Instagram fix setup error, using client-side encoded video:", setupErr);
       }
     }
 
@@ -860,6 +878,7 @@ export async function exportVideo({
     document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(url), 10000);
   } catch (error: any) {
+    onProgress(100);
     alert("Export failed: " + (error.message || error));
   }
 
