@@ -60,10 +60,12 @@ export async function POST(req: NextRequest) {
     // - AAC 128 kbps, 44100 Hz, stereo: standard audio
     const ffmpegCmd =
       `"${ffmpegPath}" -y -i "${inputPath}" ` +
-      `-c:v libx264 -preset fast -profile:v baseline -level 4.1 ` +
+      `-map_metadata -1 ` +
+      `-c:v libx264 -preset fast -profile:v main -level 4.0 -r 30 -g 60 ` +
       `-vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" -pix_fmt yuv420p ` +
-      `-c:a aac -b:a 128k -ar 44100 -ac 2 ` +
-      `-movflags +faststart ` +
+      `-color_primaries bt709 -color_trc bt709 -colorspace bt709 ` +
+      `-c:a aac -b:a 128k -ar 44100 -ac 2 -profile:a aac_low ` +
+      `-shortest -movflags +faststart ` +
       `"${outputPath}"`;
 
     // maxBuffer=500 MB to handle large HD video output from ffmpeg
