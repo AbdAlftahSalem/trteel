@@ -226,7 +226,7 @@ export async function exportVideo({
     ctx.direction = "rtl";
 
     // Arabic line wrapping
-    const words = ayah.text.split(" ");
+    const words = ayah.text.trim().split(/\s+/).filter(Boolean);
     const lines: string[] = [];
     let cur = "";
     for (const w of words) {
@@ -262,7 +262,7 @@ export async function exportVideo({
     if (showTranslation && ayah.translation) {
       ctx.font = `${tfs}px Tajawal, sans-serif`;
       ctx.direction = "ltr";
-      const tWords = ayah.translation.split(" ");
+      const tWords = ayah.translation.trim().split(/\s+/).filter(Boolean);
       let tCur = "";
       for (const w of tWords) {
         const t = tCur ? `${tCur} ${w}` : w;
@@ -372,7 +372,7 @@ export async function exportVideo({
       }
       ctx.filter = "none";
       
-      ctx.fillStyle = `rgba(255, 255, 255, ${ayahGlassOpacity})`;
+      ctx.fillStyle = `rgba(14, 20, 26, ${Math.min(0.75, 0.2 + ayahGlassOpacity)})`;
       ctx.fill();
       
       ctx.strokeStyle = "rgba(255, 255, 255, 0.2)";
@@ -396,8 +396,9 @@ export async function exportVideo({
     if (!enableWordSync) {
       lines.forEach((ln) => {
         if (showAyahGlassEffect) {
-          ctx.shadowBlur = 0;
-          ctx.shadowColor = "transparent";
+          ctx.shadowColor = "rgba(0,0,0,0.45)";
+          ctx.shadowBlur = 10 * SC;
+          ctx.shadowOffsetY = 2 * SC;
         }
         ctx.fillText(ln, tx, sy);
         sy += lh;
@@ -405,6 +406,8 @@ export async function exportVideo({
     } else {
       let cumulativeTime = 0;
 
+      // Draw synced Arabic words from the right edge so RTL spacing remains natural.
+      ctx.textAlign = "right";
       lines.forEach((ln, lineIdx) => {
         const { words: lineWordsArr, lineWidth, wordWidths, spaceWidth, charFractions } = layoutWordData[lineIdx];
         let curX = tx + (lineWidth / 2);
@@ -442,8 +445,9 @@ export async function exportVideo({
           }
 
           if (showAyahGlassEffect) {
-            ctx.shadowBlur = 0;
-            ctx.shadowColor = "transparent";
+            ctx.shadowColor = "rgba(0,0,0,0.45)";
+            ctx.shadowBlur = 10 * SC;
+            ctx.shadowOffsetY = 2 * SC;
           }
 
           ctx.fillText(word, curX, sy);
@@ -466,8 +470,9 @@ export async function exportVideo({
       ctx.direction = "ltr";
       ctx.globalAlpha = 0.9;
       if (showAyahGlassEffect) {
-        ctx.shadowBlur = 0;
-        ctx.shadowColor = "transparent";
+        ctx.shadowColor = "rgba(0,0,0,0.4)";
+        ctx.shadowBlur = 8 * SC;
+        ctx.shadowOffsetY = 1 * SC;
       } else {
         ctx.shadowColor = ayahShadowColor + "60";
         ctx.shadowBlur = 8 * SC;
