@@ -13,7 +13,7 @@ export function useEditorState() {
     surahXPosition: 50,
     ayahFontSize: 16,
     surahFontSize: 12,
-    ayahColor: "#a1a1aa",
+    ayahColor: "#ffffff",
     ayahShadowColor: "#000000",
     surahColor: "#ffffff",
     surahShadowColor: "#000000",

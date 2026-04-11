@@ -275,10 +275,10 @@ export function VideoPreview({
           }`}
           style={showAyahGlassEffect ? {
             backdropFilter: `blur(${ayahGlassBlur}px)`,
-            backgroundColor: `rgba(255, 255, 255, ${ayahGlassOpacity})`,
+            backgroundColor: `rgba(14, 20, 26, ${Math.min(0.75, 0.2 + ayahGlassOpacity)})`,
             padding: `${ayahGlassPadding * previewScale}px`,
             borderRadius: `${ayahGlassBorderRadius * previewScale}px`,
-            boxShadow: ayahGlassGlow ? `0 0 20px rgba(255,255,255,${ayahGlassOpacity * 0.5})` : undefined,
+            boxShadow: ayahGlassGlow ? `0 0 20px rgba(255,255,255,${ayahGlassOpacity * 0.35})` : undefined,
           } : {
             padding: "0 24px"
           }}
@@ -297,7 +297,7 @@ export function VideoPreview({
                           fontSize: `${ayahFontSize * previewScale}px`,
                           color: ayahColor,
                           lineHeight: 1.6,
-                          textShadow: showAyahGlassEffect ? "none" : `0 4px 12px ${ayahShadowColor}80`,
+                          textShadow: showAyahGlassEffect ? "0 2px 10px rgba(0,0,0,0.45)" : `0 4px 12px ${ayahShadowColor}80`,
                           animation: "fade-slide-up 0.8s forwards",
                         }}
                       >
@@ -331,7 +331,7 @@ export function VideoPreview({
 
                           const style: React.CSSProperties = {
                             color: ayahColor,
-                            textShadow: showAyahGlassEffect ? "none" : `0 4px 12px ${ayahShadowColor}80`,
+                            textShadow: showAyahGlassEffect ? "0 2px 10px rgba(0,0,0,0.45)" : `0 4px 12px ${ayahShadowColor}80`,
                             transition: "all 0.6s cubic-bezier(0.23, 1, 0.32, 1)",
                           };
 
@@ -377,7 +377,7 @@ export function VideoPreview({
                         color: translationColor,
                         lineHeight: 1.4,
                         opacity: 0.9,
-                        textShadow: showAyahGlassEffect ? "none" : `0 2px 8px ${ayahShadowColor}60`,
+                        textShadow: showAyahGlassEffect ? "0 1px 8px rgba(0,0,0,0.4)" : `0 2px 8px ${ayahShadowColor}60`,
                         animation: "fade-slide-up 1s forwards",
                       }}
                     >
