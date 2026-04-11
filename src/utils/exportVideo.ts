@@ -570,6 +570,11 @@ export async function exportVideo({
 
   const FPS = 30;
   const frameTime = 1 / FPS;
+  // Flush the VideoEncoder every 2 seconds (60 frames) to keep the codec active
+  // and prevent "Codec reclaimed due to inactivity" errors in the browser.
+  const FLUSH_INTERVAL_FRAMES = FPS * 2;
+  // Maximum number of frames allowed in the VideoEncoder queue before backpressuring.
+  const MAX_ENCODER_QUEUE_SIZE = 10;
   let phase = 0;
   let totalDuration = 0;
 
@@ -717,10 +722,20 @@ export async function exportVideo({
       videoEncoder.encode(videoFrame, { keyFrame: f % (FPS * 2) === 0 });
       videoFrame.close();
 
+      // Backpressure: prevent the encoder queue from growing too large
+      if (videoEncoder.encodeQueueSize > MAX_ENCODER_QUEUE_SIZE) {
+        await new Promise(r => setTimeout(r, 0));
+      }
+
       // Yield periodically to let the encoder drain and keep the UI responsive
       if (f % 30 === 0) {
         onProgress(20 + (f / totalFrames) * 65);
         await new Promise(r => setTimeout(r, 0));
+      }
+
+      // Flush periodically to keep the codec active and prevent "Codec reclaimed due to inactivity"
+      if (f > 0 && f % FLUSH_INTERVAL_FRAMES === 0) {
+        await videoEncoder.flush();
       }
     }
 
