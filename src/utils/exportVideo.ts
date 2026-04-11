@@ -570,11 +570,10 @@ export async function exportVideo({
 
   const FPS = 30;
   const frameTime = 1 / FPS;
-  // Flush the VideoEncoder every 2 seconds (60 frames) to keep the codec active
-  // and prevent "Codec reclaimed due to inactivity" errors in the browser.
-  const FLUSH_INTERVAL_FRAMES = FPS * 2;
   // Maximum number of frames allowed in the VideoEncoder queue before backpressuring.
   const MAX_ENCODER_QUEUE_SIZE = 10;
+  // Avoid waiting forever on per-frame background video seeks.
+  const SEEK_TIMEOUT_MS = 1200;
   let phase = 0;
   let totalDuration = 0;
 
@@ -631,13 +630,27 @@ export async function exportVideo({
       fastStart: 'in-memory'
     });
 
-    const videoEncoder = new VideoEncoder({
+    const isCodecInactivityError = (err: unknown): boolean => {
+      const message = err instanceof Error ? err.message : String(err);
+      return /Codec reclaimed due to inactivity/i.test(message);
+    };
+
+    let encoderNeedsReset = false;
+    let fatalVideoEncoderError: Error | null = null;
+    const buildVideoEncoder = () => new VideoEncoder({
       output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
       error: e => {
         console.error("VideoEncoder error: ", e);
-        alert(`Video encoding error: ${e.message}`);
+        if (isCodecInactivityError(e)) {
+          // Browser reclaimed the hardware codec; recreate encoder and continue.
+          encoderNeedsReset = true;
+          return;
+        }
+        fatalVideoEncoderError = e instanceof Error ? e : new Error(String(e));
       }
     });
+
+    let videoEncoder = buildVideoEncoder();
 
     // avc1.PPCCLL — PP=profile, CC=constraint flags, LL=level
     // Baseline (0x42) with constraint_set0+1+2 flags (0xE0), Level 4.1 (0x29) — most Instagram-compatible
@@ -673,6 +686,31 @@ export async function exportVideo({
 
     videoEncoder.configure(videoConfig);
 
+    const ensureVideoEncoderReady = async (): Promise<boolean> => {
+      if (fatalVideoEncoderError) {
+        throw fatalVideoEncoderError;
+      }
+      if (!encoderNeedsReset) {
+        return false;
+      }
+
+      try {
+        await videoEncoder.flush();
+      } catch {
+        // Ignore flush failure when recovering from reclaimed codec.
+      }
+      try {
+        videoEncoder.close();
+      } catch {
+        // Ignore close errors during recovery.
+      }
+
+      videoEncoder = buildVideoEncoder();
+      videoEncoder.configure(videoConfig);
+      encoderNeedsReset = false;
+      return true;
+    };
+
     const audioEncoder = new AudioEncoder({
       output: (chunk, meta) => muxer.addAudioChunk(chunk, meta),
       error: e => {
@@ -697,9 +735,23 @@ export async function exportVideo({
         const vStart = bgVideoRange[0];
         const vDur = bgVideoRange[1] - vStart;
         const seekTime = vStart + (currentTime % vDur);
-        await new Promise(res => {
-          if (!videoBG) return res(null);
-          videoBG.onseeked = () => res(null);
+        await new Promise<void>(res => {
+          if (!videoBG) {
+            res();
+            return;
+          }
+          let settled = false;
+          const finish = () => {
+            if (settled) return;
+            settled = true;
+            videoBG.onseeked = null;
+            videoBG.onerror = null;
+            clearTimeout(timeoutId);
+            res();
+          };
+          const timeoutId = window.setTimeout(finish, SEEK_TIMEOUT_MS);
+          videoBG.onseeked = finish;
+          videoBG.onerror = finish;
           videoBG.currentTime = seekTime;
         });
       }
@@ -719,7 +771,27 @@ export async function exportVideo({
         timestamp: Math.round((f / FPS) * 1e6),
         duration: Math.round((1 / FPS) * 1e6),
       });
-      videoEncoder.encode(videoFrame, { keyFrame: f % (FPS * 2) === 0 });
+
+      let forceKeyFrame = f % (FPS * 2) === 0;
+      let encoded = false;
+      for (let attempt = 0; attempt < 2 && !encoded; attempt++) {
+        const didReset = await ensureVideoEncoderReady();
+        forceKeyFrame = forceKeyFrame || didReset;
+        try {
+          videoEncoder.encode(videoFrame, { keyFrame: forceKeyFrame });
+          encoded = true;
+        } catch (err) {
+          if (attempt === 0 && isCodecInactivityError(err)) {
+            encoderNeedsReset = true;
+            continue;
+          }
+          throw err;
+        }
+      }
+
+      if (!encoded) {
+        throw new Error("Failed to recover VideoEncoder after codec inactivity.");
+      }
       videoFrame.close();
 
       // Backpressure: prevent the encoder queue from growing too large
@@ -733,10 +805,6 @@ export async function exportVideo({
         await new Promise(r => setTimeout(r, 0));
       }
 
-      // Flush periodically to keep the codec active and prevent "Codec reclaimed due to inactivity"
-      if (f > 0 && f % FLUSH_INTERVAL_FRAMES === 0) {
-        await videoEncoder.flush();
-      }
     }
 
     await videoEncoder.flush();
