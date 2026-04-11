@@ -168,11 +168,18 @@ export function VideoPreview({
     return bgImages[bgImages.length - 1].url;
   }, [bgImages, bgImage, accumulatedTime, bgType]);
 
+  const ratioMath = aspectRatio.includes(":") ? aspectRatio.replace(":", "/") : aspectRatio;
+
   return (
     <div
       ref={previewRef}
-      className="relative h-full max-h-[min(85vh,720px)] w-auto max-w-full overflow-hidden rounded-[36px] border-[6px] border-[#1e3630] shadow-[0_34px_90px_rgba(4,22,18,0.4)] transition-all duration-500 ease-in-out"
-      style={{ aspectRatio }}
+      className="relative flex-none overflow-hidden rounded-[20px] md:rounded-[36px] border-[3px] md:border-[6px] border-[#1e3630] shadow-[0_34px_90px_rgba(4,22,18,0.4)] transition-all duration-500 ease-in-out"
+      style={{ 
+        aspectRatio: ratioMath,
+        width: `min(100cqw, calc(100cqh * (${ratioMath})))`,
+        maxHeight: '100%',
+        maxWidth: '100%'
+      }}
     >
       {bgType === "image" ? (
         currentBgImage && (

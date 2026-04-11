@@ -111,7 +111,7 @@ export default function Home() {
         scrollbar-color: ${state.isDarkMode ? "#2f6f77 #0f1619" : "#1b8a64 #dde8de"};
       `}</style>
       <main
-        className={`app-noise relative flex h-[100dvh] w-full items-center justify-center overflow-hidden p-2 transition-colors duration-500 md:p-5 ${
+        className={`app-noise relative flex h-[100dvh] w-full items-center justify-center overflow-hidden p-0 transition-colors duration-500 md:p-5 ${
           state.isDarkMode ? "bg-[#081113]" : "bg-[#eef4ef]"
         }`}
         dir="ltr"
@@ -128,15 +128,15 @@ export default function Home() {
         />
 
         <section
-          className={`relative flex h-full w-full max-w-[1740px] flex-col-reverse overflow-hidden rounded-[28px] border shadow-[0_30px_90px_rgba(10,18,14,0.22)] transition-all duration-500 md:flex-row ${
+          className={`relative flex h-full w-full max-w-[1740px] flex-col overflow-hidden rounded-none border-0 shadow-[0_30px_90px_rgba(10,18,14,0.22)] transition-all duration-500 md:flex-row md:rounded-[28px] md:border ${
             state.isDarkMode
-              ? "glass-panel border-0 bg-gradient-to-br from-[#0e1a1d] to-[#0a1416]"
-              : "glass-panel border-[#d4e1d8] bg-gradient-to-br from-[#f4fbf6] to-[#ebf2ee]"
+              ? "glass-panel md:bg-gradient-to-br md:from-[#0e1a1d] md:to-[#0a1416] bg-[#0e1a1d]"
+              : "glass-panel md:border-[#d4e1d8] md:bg-gradient-to-br md:from-[#f4fbf6] md:to-[#ebf2ee] bg-[#f4fbf6]"
           }`}
           style={{ animation: "intro-rise 500ms ease-out" }}
         >
           <div
-            className={`relative flex flex-[1.4] items-center justify-center p-4 transition-colors duration-500 md:flex-1 md:p-10 ${
+            className={`relative flex h-[46dvh] shrink-0 items-center justify-center p-4 transition-colors duration-500 md:h-auto md:flex-1 md:p-10 ${
               state.isDarkMode ? "bg-[#0d1719]" : "bg-[#e8f0ea]"
             }`}
           >
@@ -169,19 +169,20 @@ export default function Home() {
               }`}
             />
 
-            <VideoPreview
-              state={state}
-              selectedAyahs={selectedAyahs}
-              selectedSurah={selectedSurah}
-              maxAyah={selectedSurah.verses_count}
-              currentAyahIndex={currentAyahIndex}
-              setCurrentAyahIndex={setCurrentAyahIndex}
-              isPlaying={isPlaying}
-              togglePlayback={togglePlayback}
-              audioRef={audioRef}
-              handleAudioEnded={handleAudioEnded}
-              ayahDurations={ayahDurations}
-            />
+            <div className="absolute inset-4 md:inset-10 flex items-center justify-center z-10" style={{ containerType: 'size' }}>
+              <VideoPreview
+                state={state}
+                selectedAyahs={selectedAyahs}
+                selectedSurah={selectedSurah}
+                maxAyah={selectedSurah.verses_count}
+                currentAyahIndex={currentAyahIndex}
+                setCurrentAyahIndex={setCurrentAyahIndex}
+                isPlaying={isPlaying}
+                togglePlayback={togglePlayback}
+                audioRef={audioRef}
+                handleAudioEnded={handleAudioEnded}
+              />
+            </div>
           </div>
 
           <SettingsSidebar
