@@ -139,7 +139,7 @@ export function SettingsSidebar({
 
   return (
     <aside
-      className={`flex h-full w-full flex-1 flex-col transition-colors duration-500 md:max-w-[460px] md:border-l ${
+      className={`custom-scrollbar flex min-h-0 w-full flex-1 flex-col overflow-y-auto transition-colors duration-500 md:h-full md:max-w-[460px] md:overflow-hidden md:border-l ${
         isDarkMode ? "bg-[#0d171a] border-[#1f373d]" : "bg-[#f9fdf9] border-[#d5e1d8]"
       }`}
       dir="rtl"
@@ -174,7 +174,7 @@ export function SettingsSidebar({
         </div>
       </header>
 
-      <div className="custom-scrollbar flex-1 overflow-y-auto px-5 py-6">
+      <div className="px-5 py-6 md:custom-scrollbar md:flex-1 md:overflow-y-auto">
         <h1 className={`text-2xl font-black transition-colors ${isDarkMode ? "text-white" : "text-[#19342b]"}`}>
           إعدادات العرض
         </h1>
@@ -1195,7 +1195,7 @@ export function SettingsSidebar({
       </div>
 
       <footer
-        className={`flex flex-col gap-4 border-t p-5 transition-colors ${
+        className={`flex flex-col gap-4 border-t p-5 transition-colors md:shrink-0 ${
           isDarkMode ? "bg-[#0d171a] border-[#1f373d]" : "bg-[#f9fdf9] border-[#dfe9e1]"
         }`}
       >
