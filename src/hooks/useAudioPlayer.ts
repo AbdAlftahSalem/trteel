@@ -21,7 +21,8 @@ export function useAudioPlayer(
     if (!audioRef.current || isExporting) return;
 
     if (!audioContextRef.current) {
-      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      audioContextRef.current = new (window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
     }
 
     const ctx = audioContextRef.current;
@@ -102,14 +103,15 @@ export function useAudioPlayer(
     }
   }, [isPlaying, setupAudioGraph]);
 
-  // Reset when surah or ayahs change
-  useEffect(() => {
+  // Reset when surah or ayahs change (state is adjusted during render, as
+  // React recommends; the playback effect below then pauses the audio).
+  const resetKey = `${selectedSurahNumber}:${selectedAyahs.length}`;
+  const [previousResetKey, setPreviousResetKey] = useState(resetKey);
+  if (previousResetKey !== resetKey) {
+    setPreviousResetKey(resetKey);
     setCurrentAyahIndex(0);
     setIsPlaying(false);
-    if (audioRef.current) {
-      audioRef.current.pause();
-    }
-  }, [selectedSurahNumber, selectedAyahs.length]);
+  }
 
   // Handle Playback
   useEffect(() => {

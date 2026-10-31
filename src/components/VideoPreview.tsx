@@ -81,6 +81,8 @@ export function VideoPreview({
 
   const [currentAudioTime, setCurrentAudioTime] = useState<number>(0);
 
+  const [audioDuration, setAudioDuration] = useState<number>(0);
+
   useEffect(() => {
     const el = previewRef.current;
     if (!el) return;
@@ -123,14 +125,19 @@ export function VideoPreview({
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    
+
     const handleUpdate = () => {
       setCurrentAudioTime(audio.currentTime);
+      setAudioDuration(audio.duration);
     };
-    
+
     audio.addEventListener("timeupdate", handleUpdate);
-    return () => audio.removeEventListener("timeupdate", handleUpdate);
-  }, [audioRef.current, currentAyahIndex]);
+    audio.addEventListener("loadedmetadata", handleUpdate);
+    return () => {
+      audio.removeEventListener("timeupdate", handleUpdate);
+      audio.removeEventListener("loadedmetadata", handleUpdate);
+    };
+  }, [audioRef, currentAyahIndex]);
 
     const {
     showTranslation,
@@ -315,7 +322,7 @@ export function VideoPreview({
                       >
                         {(ayah.text.split(/\s+/).filter(w => w.length > 0)).map((word, wIdx) => {
                           const words = ayah.text.split(/\s+/).filter(w => w.length > 0);
-                          const totalDuration = audioRef.current?.duration || 4;
+                          const totalDuration = audioDuration || 4;
                           const wordLengths = words.map(w => w.length);
                           const totalLength = wordLengths.reduce((a, b) => a + b, 0);
                           let cumulativeTime = 0;

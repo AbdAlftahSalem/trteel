@@ -1,3 +1,5 @@
+import type { StaticImageData } from "next/image";
+
 export type Reciter = {
   id: string;
   name: string;
@@ -61,7 +63,7 @@ export type EditorState = {
   showSurahName: boolean;
   aspectRatio: string;
   bgType: "image" | "video";
-  bgImage: any;
+  bgImage: StaticImageData | string;
   bgVideo: string | null;
   bgVideoMuted: boolean;
   bgVideoRange: [number, number];

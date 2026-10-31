@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import Image from "next/image";
 import {
   Palette,
@@ -42,14 +42,14 @@ export function SettingsSidebar({
   const [activeAccordion, setActiveAccordion] = useState<string>("selection");
   const [settingsMode, setSettingsMode] = useState<"simple" | "advanced">("simple");
 
-  useEffect(() => {
-    if (settingsMode === "simple") {
-      setActiveAccordion((current) => {
-        const hiddenInSimple = ["translation", "kinetic", "wave", "audio_effects", "watermark"];
-        return hiddenInSimple.includes(current) ? "selection" : current;
-      });
-    }
-  }, [settingsMode]);
+  // Switching to simple mode closes any section that simple mode hides.
+  const switchToSimpleMode = () => {
+    setSettingsMode("simple");
+    setActiveAccordion((current) => {
+      const hiddenInSimple = ["translation", "kinetic", "wave", "audio_effects", "watermark"];
+      return hiddenInSimple.includes(current) ? "selection" : current;
+    });
+  };
 
   const {
     isDarkMode,
@@ -131,7 +131,7 @@ export function SettingsSidebar({
     const preset = EXPORT_PRESETS.find((p) => p.id === presetId);
     if (preset) {
       updateState({
-        exportPreset: presetId as any,
+        exportPreset: presetId as EditorState["exportPreset"],
         aspectRatio: preset.ratio,
       });
     }
@@ -186,7 +186,7 @@ export function SettingsSidebar({
           <div className="grid grid-cols-2 gap-1">
             <button
               type="button"
-              onClick={() => setSettingsMode("simple")}
+              onClick={switchToSimpleMode}
               className={`h-9 rounded-lg text-xs font-extrabold transition-all ${
                 settingsMode === "simple"
                   ? isDarkMode
@@ -279,7 +279,7 @@ export function SettingsSidebar({
                       isDarkMode ? "bg-[#252c3c] border-[#2f3545] text-white" : "bg-white border-[#e3e7ef] text-[#1f2532]"
                     }`}
                   >
-                    {reciters.map((r: any) => (
+                    {reciters.map((r) => (
                       <option key={r.id} value={r.id}>
                         {r.name_ar || r.name}
                       </option>
@@ -300,7 +300,7 @@ export function SettingsSidebar({
                       isDarkMode ? "bg-[#252c3c] border-[#2f3545] text-white" : "bg-white border-[#e3e7ef] text-[#1f2532]"
                     }`}
                   >
-                    {surahs.map((surah: any) => (
+                    {surahs.map((surah) => (
                       <option key={surah.number} value={surah.number}>
                         {surah.number}. {surah.name.ar}
                       </option>
@@ -372,7 +372,7 @@ export function SettingsSidebar({
                     <div className="relative">
                       <select
                         value={selectedLanguage}
-                        onChange={(e) => updateState({ selectedLanguage: e.target.value as any })}
+                        onChange={(e) => updateState({ selectedLanguage: e.target.value as EditorState["selectedLanguage"] })}
                         className={`h-11 w-full appearance-none rounded-xl border px-3 text-xs font-bold outline-none transition focus:border-[#2f7dff] ${
                           isDarkMode ? "bg-[#252c3c] border-[#2f3545] text-white" : "bg-white border-[#e3e7ef] text-[#1f2532]"
                         }`}
@@ -1016,7 +1016,7 @@ export function SettingsSidebar({
                   {EXPORT_QUALITIES.map((q) => (
                     <button
                       key={q.id}
-                      onClick={() => updateState({ exportQuality: q.id as any })}
+                      onClick={() => updateState({ exportQuality: q.id as EditorState["exportQuality"] })}
                       className={`flex-1 rounded-lg py-2 text-[10px] font-bold transition-all ${
                         exportQuality === q.id
                           ? "bg-[#1677ff] text-white shadow-lg shadow-[#1677ff]/30"
