@@ -1,5 +1,8 @@
 # Trteel Quran Video Studio
 
+[![CI](https://github.com/AbdAlftahSalem/trteel/actions/workflows/ci.yml/badge.svg)](https://github.com/AbdAlftahSalem/trteel/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 Trteel is a full web studio for creating beautiful Quran recitation videos with synchronized ayahs, translations, animated effects, and one-click export.
 
 ![Trteel Website Preview](src/assets/images/website.png)
@@ -106,8 +109,8 @@ Main goals:
 - TypeScript
 - Tailwind CSS v4
 - Lucide React icons
-- ffmpeg-static + fluent-ffmpeg (server-side video encoding)
-- html2canvas utilities for visual capture workflows
+- WebCodecs + mp4-muxer (in-browser MP4 encoding)
+- ffmpeg-static (server-side re-encode for social presets)
 
 ---
 
@@ -117,7 +120,7 @@ Key folders:
 
 - src/app
 	- Main UI pages and root layout
-	- API route for export
+	- API routes (`api/instagram-fix`, `api/export`) that run FFmpeg
 - src/components
 	- UI controls, settings panels, and preview modules
 - src/hooks
@@ -133,7 +136,7 @@ Key folders:
 
 Requirements:
 
-- Node.js 18+ recommended
+- Node.js 20.9 or newer (required by Next.js 16)
 - npm (or pnpm/yarn)
 
 Install:
@@ -170,15 +173,16 @@ npm run lint
 
 ### 6. How Export Works
 
-1. The client renders visual frames based on selected ayahs and settings.
-2. Audio is prepared and mixed with optional effects.
-3. Frames + audio are sent to API route.
-4. Server route runs FFmpeg to produce final MP4.
-5. Browser downloads exported video.
+1. The browser draws every frame on a canvas from the selected ayahs and settings.
+2. Audio is prepared and mixed with the optional effects.
+3. Frames and audio are encoded to H.264/AAC in the browser (WebCodecs) and packed into an MP4 with mp4-muxer.
+4. For the Instagram, TikTok and WhatsApp presets, the MP4 is sent to `POST /api/instagram-fix`, which re-encodes it with FFmpeg (H.264 Main 4.0, yuv420p, faststart) so those apps accept it. If that step fails or times out, the browser keeps its own MP4.
+5. The browser downloads the video.
 
-Export endpoint:
+API endpoints:
 
-- POST /api/export
+- `POST /api/instagram-fix`: re-encode an MP4 for social apps (form fields `video`, `filename`)
+- `POST /api/export`: build an MP4 from JPEG frames (or a video) plus audio (form fields `frames` / `video`, `audio`, `settings` with `fps` 1–60 and `bitrate` like `6000k`)
 
 ---
 
@@ -204,7 +208,7 @@ Export endpoint:
 
 ### 9. License
 
-No explicit license file is currently included. Add a LICENSE file if you plan to publish or distribute this project.
+This project is licensed under the [MIT License](LICENSE).
 
 ---
 
@@ -308,7 +312,8 @@ No explicit license file is currently included. Add a LICENSE file if you plan t
 - TypeScript
 - Tailwind CSS v4
 - Lucide React
-- ffmpeg-static + fluent-ffmpeg لتجميع الفيديو
+- WebCodecs + mp4-muxer لترميز الفيديو داخل المتصفح
+- ffmpeg-static لإعادة الترميز على الخادم لقوالب السوشال ميديا
 
 ---
 
@@ -318,7 +323,7 @@ No explicit license file is currently included. Add a LICENSE file if you plan t
 
 - src/app
 	- الصفحات الأساسية والتخطيط العام
-	- مسار API الخاص بالتصدير
+	- مسارات API (`api/instagram-fix` و `api/export`) التي تشغّل FFmpeg
 - src/components
 	- واجهات التحكم والإعدادات والمعاينة
 - src/hooks
@@ -334,7 +339,7 @@ No explicit license file is currently included. Add a LICENSE file if you plan t
 
 المتطلبات:
 
-- Node.js 18 أو أعلى
+- Node.js 20.9 أو أعلى (مطلوب لـ Next.js 16)
 - npm أو pnpm أو yarn
 
 التثبيت:
@@ -371,15 +376,16 @@ npm run lint
 
 ### 6. آلية التصدير
 
-1. الواجهة تقوم بتجهيز الإطارات حسب الإعدادات.
+1. المتصفح يرسم كل إطار على canvas حسب الآيات والإعدادات.
 2. يتم تجهيز الصوت ودمجه مع المؤثرات (إن وُجدت).
-3. يتم إرسال الإطارات والصوت إلى API.
-4. الخادم يستخدم FFmpeg لإخراج MP4 نهائي.
+3. يتم ترميز الإطارات والصوت داخل المتصفح (WebCodecs) وتجميعها في ملف MP4 عبر mp4-muxer.
+4. في قوالب إنستغرام وتيك توك وواتساب، يُرسل الملف إلى `POST /api/instagram-fix` ليعيد FFmpeg ترميزه بصيغة تقبلها هذه التطبيقات. إذا فشلت هذه الخطوة يُستخدم ملف المتصفح كما هو.
 5. يتم تنزيل الفيديو إلى جهاز المستخدم.
 
-مسار التصدير:
+مسارات API:
 
-- POST /api/export
+- `POST /api/instagram-fix`
+- `POST /api/export`
 
 ---
 
@@ -405,4 +411,4 @@ npm run lint
 
 ### 9. الترخيص
 
-لا يوجد ملف ترخيص مرفق حالياً. إذا كنت تنوي نشر المشروع، أضف ملف LICENSE مناسب.
+المشروع مرخّص تحت [رخصة MIT](LICENSE).

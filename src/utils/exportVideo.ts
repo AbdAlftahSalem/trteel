@@ -166,7 +166,7 @@ export async function exportVideo({
 
   const loadEl = async (src: string): Promise<HTMLImageElement | null> => {
     return new Promise((resolve) => {
-      const el = new (window as any).Image();
+      const el = new window.Image();
       if (src.startsWith("http")) el.crossOrigin = "anonymous";
       el.onload = () => resolve(el);
       el.onerror = () => resolve(null);
@@ -350,8 +350,8 @@ export async function exportVideo({
       }
       
       ctx.beginPath();
-      if ((ctx as any).roundRect) {
-        (ctx as any).roundRect(glassX, glassY, glassW, glassH, radius);
+      if (typeof ctx.roundRect === "function") {
+        ctx.roundRect(glassX, glassY, glassW, glassH, radius);
       } else {
         ctx.rect(glassX, glassY, glassW, glassH);
       }
@@ -536,8 +536,8 @@ export async function exportVideo({
         ctx.globalAlpha = 0.85;
         const bx = waveGroupLeft + idx * bStep;
         ctx.beginPath();
-        if ((ctx as any).roundRect) {
-          (ctx as any).roundRect(bx, barTop, bW, scaledH, bW / 2);
+        if (typeof ctx.roundRect === "function") {
+          ctx.roundRect(bx, barTop, bW, scaledH, bW / 2);
         } else {
           ctx.rect(bx, barTop, bW, scaledH);
         }
@@ -578,7 +578,8 @@ export async function exportVideo({
   let totalDuration = 0;
 
   const audioData: { buffer: AudioBuffer | null, duration: number, start: number, ayahIdx: number }[] = [];
-  const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+  const audioCtx = new (window.AudioContext ||
+    (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
 
   onProgress(5);
 
@@ -657,7 +658,7 @@ export async function exportVideo({
     // Main    (0x4d) no extra constraints (0x00), Level 4.1 (0x29)
     // High    (0x64) no extra constraints           (0x00), Level 4.1 (0x29)
     // VP8/VP9 are NOT supported by Instagram — never use as fallback
-    let videoConfig: VideoEncoderConfig = {
+    const videoConfig: VideoEncoderConfig = {
       codec: 'avc1.42E029', // H.264 Baseline Profile, Level 4.1 — max Instagram compatibility
       width: CW,
       height: CH,
@@ -943,9 +944,9 @@ export async function exportVideo({
             const errText = await response.text();
             console.warn("Instagram fix API failed, using client-side encoded video:", errText);
           }
-        } catch (fetchErr: any) {
+        } catch (fetchErr: unknown) {
           clearTimeout(timeoutId);
-          if (fetchErr?.name === "AbortError") {
+          if ((fetchErr as { name?: string } | null)?.name === "AbortError") {
             console.warn("Instagram fix API timed out (4 min), using client-side encoded video.");
           } else {
             console.warn("Instagram fix API unreachable, using client-side encoded video:", fetchErr);
@@ -965,9 +966,9 @@ export async function exportVideo({
     a.click();
     document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(url), 10000);
-  } catch (error: any) {
+  } catch (error: unknown) {
     onProgress(100);
-    alert("Export failed: " + (error.message || error));
+    alert("Export failed: " + (error instanceof Error ? error.message : String(error)));
   }
 
   audioCtx.close();
